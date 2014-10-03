@@ -1,0 +1,1 @@
+void loadRom(char *);
