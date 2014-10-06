@@ -3,14 +3,14 @@ CFLAGS=-c -Wall
 
 all: emulator
 
-emulator: main.o loader.o
-	$(CC) main.o loader.o -o emulator
+emulator: main.o cpu.o
+	$(CC) main.o cpu.o -o emulator
 
 main.o: src/main.c
 	$(CC) $(CFLAGS) src/main.c
 
-loader.o: src/loader.c
-	$(CC) $(CFLAGS) src/loader.c
+cpu.o: src/cpu.c
+	$(CC) $(CFLAGS) src/cpu.c
 
 clean:
 	rm -rf *o emulator

@@ -1,13 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../include/loader.h"
-#include "../include/main.h"
+#include "main.h"
+#include "cpu.h"
 
 int main(int argc, char **argv) {
 	if(argc != 2) {
 		printf("Missing rom.\n");
-		printf("Usage: ./main [filename]\n");
+		printf("Usage: ./emulator [filename]\n");
 		return 1;
 	} else {
 		loadRom(argv[1]);
@@ -17,17 +17,23 @@ int main(int argc, char **argv) {
 }
 
 void loadRom(char *fileName) {
-	char *rom;
-
-	rom = loadFromFile(fileName);
-	if(rom == NULL) {
-		printf("An error occurred.\n");
+	FILE* fp = fopen(fileName, "rb");
+	if(fp == NULL) {
+		printf("Failed to open file.\n");
 		exit(1);
 	}
 
-	if(!validateTZXHeader(rom)) {
-		printf("Invalid .TZX header\n");
-	}
+	// Load contents into CPU registers
+	A = fgetc(fp);
+	F = fgetc(fp);
+	C = fgetc(fp);
+	B = fgetc(fp);
+	L = fgetc(fp);
+	H = fgetc(fp);
 
-	
+
+
+
+	printf("%x\n", A);
+	exit(0);
 }
