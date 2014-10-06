@@ -25,6 +25,8 @@ struct Z80 {
 };
 struct Z80 CPU;
 
+u8 RAM[0xFFFF] = {0};
+
 int main(int argc, char **argv) {
 	if(argc != 2) {
 		printf("Missing rom.\n");
@@ -79,14 +81,48 @@ void loadRom(char *fileName) {
 	int headerLength = 0;
 	fread(&headerLength, sizeof(u16), 1, fp);
 
-	printf("%x\n", CPU.regA);
-	printf("%x\n", CPU.regF);
-	printf("%x\n", CPU.regC);
-	printf("%x\n", CPU.regB);
-	printf("%x\n", CPU.regL);
-	printf("%x\n", CPU.regH);
+	fread(&CPU.programCounter, sizeof(u16), 1, fp); // Actual program counter contents
 
-	printf("%x\n", CPU.programCounter);
-	printf("%i\n", headerLength);
+	fgetc(fp); // Hardware mode - currently 48k for this rom
+	fgetc(fp); // SamRam mode flag - currently off
+	fgetc(fp); // Paged rom flag
+	
+	/**
+	 * Bit 0: 1 if R register emulation on
+	 * Bit 1: 1 if LDIR emulation on
+	 * Bit 2: AY sound in use, even on 48K machines
+	 * Bit 6: (if bit 2 set) Fuller Audio Box emulation
+	 * Bit 7: Modify hardware
+	 */
+	fgetc(fp); // currently bits 0 and 1 are 1
+
+	fgetc(fp); // Sound chip register number
+	fseek(fp, 16, SEEK_CUR); // Sound chip register contents
+	fseek(fp, 31, SEEK_CUR); // Other flags that I probably need
+
+	// Memory pointer
+	u8* memPtr = RAM;
+
+	// Start reading RAM snapshot
+	int dataLength = 0;
+
+	fread(&dataLength, sizeof(u16), 1, fp);
+	printf("%x\n", dataLength);
+	fgetc(fp); // Page number (currently 1)
+	memPtr = &RAM[0x8000];
+	fread(memPtr, sizeof(u8), dataLength, fp);
+
+	fread(&dataLength, sizeof(u16), 1, fp);
+	printf("%x\n", dataLength);
+	fgetc(fp); // Page number (currently 2)
+	memPtr = &RAM[0xc000];
+	fread(memPtr, sizeof(u8), dataLength, fp);
+
+	fread(&dataLength, sizeof(u16), 1, fp);
+	printf("%x\n", dataLength);
+	fgetc(fp); // Page number (currently 5)
+	memPtr = &RAM[0x4000];
+	fread(memPtr, sizeof(u8), dataLength, fp);
+
 	exit(0);
 }
