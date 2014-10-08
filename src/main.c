@@ -25,7 +25,7 @@ struct Z80 {
 };
 struct Z80 CPU;
 
-u8 RAM[0xFFFF] = {0};
+u8 RAM[0xFFFF] = { 0x00 };
 
 int main(int argc, char **argv) {
 	if(argc != 2) {
@@ -106,23 +106,137 @@ void loadRom(char *fileName) {
 	// Start reading RAM snapshot
 	int dataLength = 0;
 
-	fread(&dataLength, sizeof(u16), 1, fp);
-	printf("%x\n", dataLength);
-	fgetc(fp); // Page number (currently 1)
-	memPtr = &RAM[0x8000];
-	fread(memPtr, sizeof(u8), dataLength, fp);
+	/**
+	 *  0 - 48K rom
+	 *  1 - Interface I, Disciple or Plus D rom
+	 *  2 -
+	 *  3 -
+	 *  4 - 0x8000-bfff
+	 *  5 - 0xc000-ffff
+	 *  6 -
+	 *  7 -
+	 *  8 - 0x4000
+	 *  9 -
+	 * 10 -
+	 * 11 -
+	 */
+	u16 pageStart[12] = {0, 0, 0, 0, 0x8000, 0xc000, 0, 0, 0x4000, 0, 0, 0};
+	short currentPage = 0;
 
 	fread(&dataLength, sizeof(u16), 1, fp);
-	printf("%x\n", dataLength);
-	fgetc(fp); // Page number (currently 2)
-	memPtr = &RAM[0xc000];
-	fread(memPtr, sizeof(u8), dataLength, fp);
+	// printf("%x\n", dataLength);
+	currentPage = fgetc(fp);
+	// printf("%x\n", currentPage);
+	memPtr = &RAM[pageStart[currentPage]];
+	// fread(memPtr, sizeof(u8), dataLength, fp);
+
+	u8 bytes[4] = { 0 };
+	// Uncompress data
+	for (int i = 0; i < dataLength; i++) {
+		bytes[0] = fgetc(fp);
+		if(bytes[0] == 0xED) {
+			bytes[1] = fgetc(fp);
+			if(bytes[1] == 0xED) {
+				bytes[2] = fgetc(fp);
+				bytes[3] = fgetc(fp);
+				for(int j = 0; j < bytes[2]; j++) {
+					*memPtr = bytes[3];
+					memPtr++;
+				}
+				i++;
+				i++;
+				i++;
+			} else {
+				*memPtr = bytes[0];
+				memPtr++;
+				*memPtr = bytes[1];
+				memPtr++;
+				i++;
+			}
+		} else {
+			*memPtr = bytes[0];
+			memPtr++;
+		}
+	}
 
 	fread(&dataLength, sizeof(u16), 1, fp);
-	printf("%x\n", dataLength);
-	fgetc(fp); // Page number (currently 5)
-	memPtr = &RAM[0x4000];
-	fread(memPtr, sizeof(u8), dataLength, fp);
+	// printf("%x\n", dataLength);
+	currentPage = fgetc(fp);
+	// printf("%x\n", currentPage);
+	memPtr = &RAM[pageStart[currentPage]];
+	// Uncompress data
+	for (int i = 0; i < dataLength; i++) {
+		bytes[0] = fgetc(fp);
+		if(bytes[0] == 0xED) {
+			bytes[1] = fgetc(fp);
+			if(bytes[1] == 0xED) {
+				bytes[2] = fgetc(fp);
+				bytes[3] = fgetc(fp);
+				for(int j = 0; j < bytes[2]; j++) {
+					*memPtr = bytes[3];
+					memPtr++;
+				}
+				i++;
+				i++;
+				i++;
+			} else {
+				*memPtr = bytes[0];
+				memPtr++;
+				*memPtr = bytes[1];
+				memPtr++;
+				i++;
+			}
+		} else {
+			*memPtr = bytes[0];
+			memPtr++;
+		}
+	}
+	// fread(memPtr, sizeof(u8), dataLength, fp);
 
+	fread(&dataLength, sizeof(u16), 1, fp);
+	// printf("%x\n", dataLength);
+	currentPage = fgetc(fp);
+	// printf("%x\n", currentPage);
+	memPtr = &RAM[pageStart[currentPage]];
+
+	for (int i = 0; i < dataLength; i++) {
+		bytes[0] = fgetc(fp);
+		if(bytes[0] == 0xED) {
+			bytes[1] = fgetc(fp);
+			if(bytes[1] == 0xED) {
+				bytes[2] = fgetc(fp);
+				bytes[3] = fgetc(fp);
+				for(int j = 0; j < bytes[2]; j++) {
+					*memPtr = bytes[3];
+					memPtr++;
+				}
+				i++;
+				i++;
+				i++;
+			} else {
+				*memPtr = bytes[0];
+				memPtr++;
+				*memPtr = bytes[1];
+				memPtr++;
+				i++;
+			}
+		} else {
+			*memPtr = bytes[0];
+			memPtr++;
+		}
+	}
+
+	printf("ProgCount -> 0x%x\n", RAM[CPU.programCounter]);
+
+	// fread(memPtr, sizeof(u8), dataLength, fp);
+	// printRAM();
 	exit(0);
+}
+//485
+void printRAM() {
+	printf("RAM:\n");
+	for (u16 i = 0xc000; i < 0xffff; i++) {
+		printf("-------------------------\n");
+		printf("0x%x -> 0x%x\n", i, RAM[i]);
+	}
 }
