@@ -1,2 +1,2 @@
-void loadRom(char *);
+// void loadRom(char *);
 void printRAM();
