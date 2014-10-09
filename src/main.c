@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
 //485
 void printRAM() {
 	printf("RAM:\n");
-	for (u16 i = 0x4000; i < 0x7fff; i++) {
+	for (u16 i = 0x4000; i <= 0x7fff; i++) {
 		printf("-------------------------\n");
 		printf("0x%x -> 0x%x\n", i, RAM[i]);
 	}

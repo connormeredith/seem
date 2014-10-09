@@ -91,110 +91,44 @@ void loadMemoryBlocks(FILE* fp, u8 memory[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	// Needs to be in loop to support multiple blocks
-	blockLength = getNextWord(fp);
-	currentPage = getNextByte(fp);
-
-	// Move the memory pointer to the correct place in memory for this page
-	memoryPtr = &memory[pageMapping[currentPage]];
-
+	// We read a maximum of 4 bytes because of compression
 	u8 bytes[4] = { 0 };
-	// Uncompress data
-	for (int i = 0; i < blockLength; i++) {
-		bytes[0] = fgetc(fp);
-		if(bytes[0] == 0xED) {
-			bytes[1] = fgetc(fp);
-			if(bytes[1] == 0xED) {
-				bytes[2] = fgetc(fp);
-				bytes[3] = fgetc(fp);
-				for(int j = 0; j < bytes[2]; j++) {
-					*memoryPtr = bytes[3];
+
+	int complete = 4;
+
+	while(complete != 1) {
+
+		blockLength = getNextWord(fp);
+		currentPage = getNextByte(fp);
+
+		// Move the memory pointer to the correct place in memory for this page
+		memoryPtr = &memory[pageMapping[currentPage]];
+
+		for (int i = 0; i < blockLength; i++) {
+			bytes[0] = getNextByte(fp);
+			if(bytes[0] == 0xED) {
+				bytes[1] = getNextByte(fp);
+				if(bytes[1] == 0xED) {
+					bytes[2] = getNextByte(fp);
+					bytes[3] = getNextByte(fp);
+					for(int j = 0; j < bytes[2]; j++) {
+						*memoryPtr = bytes[3];
+						memoryPtr++;
+					}
+					i+=3;
+				} else {
+					*memoryPtr = bytes[0];
 					memoryPtr++;
+					*memoryPtr = bytes[1];
+					memoryPtr++;
+					i++;
 				}
-				i++;
-				i++;
-				i++;
 			} else {
 				*memoryPtr = bytes[0];
 				memoryPtr++;
-				*memoryPtr = bytes[1];
-				memoryPtr++;
-				i++;
 			}
-		} else {
-			*memoryPtr = bytes[0];
-			memoryPtr++;
 		}
-	}
-
-	// Needs to be in loop to support multiple blocks
-	blockLength = getNextWord(fp);
-	currentPage = getNextByte(fp);
-
-	// Move the memory pointer to the correct place in memory for this page
-	memoryPtr = &memory[pageMapping[currentPage]];
-
-	// Uncompress data
-	for (int i = 0; i < blockLength; i++) {
-		bytes[0] = fgetc(fp);
-		if(bytes[0] == 0xED) {
-			bytes[1] = fgetc(fp);
-			if(bytes[1] == 0xED) {
-				bytes[2] = fgetc(fp);
-				bytes[3] = fgetc(fp);
-				for(int j = 0; j < bytes[2]; j++) {
-					*memoryPtr = bytes[3];
-					memoryPtr++;
-				}
-				i++;
-				i++;
-				i++;
-			} else {
-				*memoryPtr = bytes[0];
-				memoryPtr++;
-				*memoryPtr = bytes[1];
-				memoryPtr++;
-				i++;
-			}
-		} else {
-			*memoryPtr = bytes[0];
-			memoryPtr++;
-		}
-	}
-
-	// Needs to be in loop to support multiple blocks
-	blockLength = getNextWord(fp);
-	currentPage = getNextByte(fp);
-
-	// Move the memory pointer to the correct place in memory for this page
-	memoryPtr = &memory[pageMapping[currentPage]];
-
-	// Uncompress data
-	for (int i = 0; i < blockLength; i++) {
-		bytes[0] = fgetc(fp);
-		if(bytes[0] == 0xED) {
-			bytes[1] = fgetc(fp);
-			if(bytes[1] == 0xED) {
-				bytes[2] = fgetc(fp);
-				bytes[3] = fgetc(fp);
-				for(int j = 0; j < bytes[2]; j++) {
-					*memoryPtr = bytes[3];
-					memoryPtr++;
-				}
-				i++;
-				i++;
-				i++;
-			} else {
-				*memoryPtr = bytes[0];
-				memoryPtr++;
-				*memoryPtr = bytes[1];
-				memoryPtr++;
-				i++;
-			}
-		} else {
-			*memoryPtr = bytes[0];
-			memoryPtr++;
-		}
+		complete--;
 	}
 }
 
