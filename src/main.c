@@ -18,9 +18,11 @@ int main(int argc, char **argv) {
 		return 1;
 	} else {
 		initCPU(&CPU);
-		loadRom(argv[1], &CPU, &RAM);
+		loadRom(argv[1], &CPU, RAM);
 
-		printf("ProgCount -> 0x%x\n", CPU.programCounter);
+		printRAM();
+
+		printf("ProgCount -> 0x%x\n", RAM[CPU.programCounter]);
 
 		return 0;
 	}
@@ -227,7 +229,7 @@ int main(int argc, char **argv) {
 //485
 void printRAM() {
 	printf("RAM:\n");
-	for (u16 i = 0xc000; i < 0xffff; i++) {
+	for (u16 i = 0x4000; i < 0x7fff; i++) {
 		printf("-------------------------\n");
 		printf("0x%x -> 0x%x\n", i, RAM[i]);
 	}

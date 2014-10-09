@@ -4,7 +4,7 @@
 #include "romLoader.h"
 #include "Z80.h"
 
-void loadRom(char *filename, Z80* cpu, u8* memory[]) {
+void loadRom(char *filename, Z80* cpu, u8 memory[]) {
 	FILE* fp = fopen(filename, "rb");
 	if(fp == NULL) {
 		printf("Failed to open file.\n");
@@ -99,6 +99,76 @@ void loadMemoryBlocks(FILE* fp, u8 memory[]) {
 	memoryPtr = &memory[pageMapping[currentPage]];
 
 	u8 bytes[4] = { 0 };
+	// Uncompress data
+	for (int i = 0; i < blockLength; i++) {
+		bytes[0] = fgetc(fp);
+		if(bytes[0] == 0xED) {
+			bytes[1] = fgetc(fp);
+			if(bytes[1] == 0xED) {
+				bytes[2] = fgetc(fp);
+				bytes[3] = fgetc(fp);
+				for(int j = 0; j < bytes[2]; j++) {
+					*memoryPtr = bytes[3];
+					memoryPtr++;
+				}
+				i++;
+				i++;
+				i++;
+			} else {
+				*memoryPtr = bytes[0];
+				memoryPtr++;
+				*memoryPtr = bytes[1];
+				memoryPtr++;
+				i++;
+			}
+		} else {
+			*memoryPtr = bytes[0];
+			memoryPtr++;
+		}
+	}
+
+	// Needs to be in loop to support multiple blocks
+	blockLength = getNextWord(fp);
+	currentPage = getNextByte(fp);
+
+	// Move the memory pointer to the correct place in memory for this page
+	memoryPtr = &memory[pageMapping[currentPage]];
+
+	// Uncompress data
+	for (int i = 0; i < blockLength; i++) {
+		bytes[0] = fgetc(fp);
+		if(bytes[0] == 0xED) {
+			bytes[1] = fgetc(fp);
+			if(bytes[1] == 0xED) {
+				bytes[2] = fgetc(fp);
+				bytes[3] = fgetc(fp);
+				for(int j = 0; j < bytes[2]; j++) {
+					*memoryPtr = bytes[3];
+					memoryPtr++;
+				}
+				i++;
+				i++;
+				i++;
+			} else {
+				*memoryPtr = bytes[0];
+				memoryPtr++;
+				*memoryPtr = bytes[1];
+				memoryPtr++;
+				i++;
+			}
+		} else {
+			*memoryPtr = bytes[0];
+			memoryPtr++;
+		}
+	}
+
+	// Needs to be in loop to support multiple blocks
+	blockLength = getNextWord(fp);
+	currentPage = getNextByte(fp);
+
+	// Move the memory pointer to the correct place in memory for this page
+	memoryPtr = &memory[pageMapping[currentPage]];
+
 	// Uncompress data
 	for (int i = 0; i < blockLength; i++) {
 		bytes[0] = fgetc(fp);
