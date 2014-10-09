@@ -22,7 +22,6 @@
 
 	typedef struct z80 Z80;
 
-	// Zero all registers
 	void initCPU(Z80*);
 
 #endif

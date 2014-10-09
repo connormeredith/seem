@@ -1,8 +1,6 @@
 #include "z80.h"
 
 void initCPU(Z80* cpu) {
-	
-	// Init registers
 	cpu->regA = 0x00;
 	cpu->regB = 0x00;
 	cpu->regC = 0x00;
@@ -22,4 +20,3 @@ void initCPU(Z80* cpu) {
 	cpu->refreshCounter = 0x00;
 	cpu->statusFlags = 0x00;
 }
-

@@ -3,9 +3,11 @@
 
 void loadRom(char*, Z80*, u8[]);
 
-void loadRegisters(FILE*, Z80*);
-void loadAdditionalHeaderContents(FILE*, Z80*);
-void loadMemoryBlocks(FILE*, u8[]);
+// ROM loading functions
+void _loadRegisters(FILE*, Z80*);
+void _loadAdditionalHeaderContents(FILE*, Z80*);
+void _loadMemoryBlocks(FILE*, u8[]);
 
-int getNextByte(FILE*);
-int getNextWord(FILE*);
+// File functions
+int _getNextByte(FILE*);
+int _getNextWord(FILE*);

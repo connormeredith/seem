@@ -11,9 +11,9 @@ void loadRom(char *filename, Z80* cpu, u8 memory[]) {
 		//ERROR
 	}
 
-	loadRegisters(fp, cpu);
-	loadAdditionalHeaderContents(fp, cpu);
-	loadMemoryBlocks(fp, memory);
+	_loadRegisters(fp, cpu);
+	_loadAdditionalHeaderContents(fp, cpu);
+	_loadMemoryBlocks(fp, memory);
 }
 
 /**
@@ -21,46 +21,46 @@ void loadRom(char *filename, Z80* cpu, u8 memory[]) {
  * @param fp - The file pointer for the .z80 file.
  * @param cpu - The Z80 struct in which the registers are situated.
  */
-void loadRegisters(FILE* fp, Z80* cpu) {
+void _loadRegisters(FILE* fp, Z80* cpu) {
 	if(fseek(fp, 0, SEEK_SET) != 0) {
 		fprintf(stderr, "Failed to set file pointer to start of file.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	// Load main CPU registers
-	cpu->regA = getNextByte(fp);
-	cpu->regF = getNextByte(fp);
-	cpu->regC = getNextByte(fp);
-	cpu->regB = getNextByte(fp);
-	cpu->regL = getNextByte(fp);
-	cpu->regH = getNextByte(fp);
+	cpu->regA = _getNextByte(fp);
+	cpu->regF = _getNextByte(fp);
+	cpu->regC = _getNextByte(fp);
+	cpu->regB = _getNextByte(fp);
+	cpu->regL = _getNextByte(fp);
+	cpu->regH = _getNextByte(fp);
 
 	// Load program counter and stack pointer
-	cpu->programCounter = getNextWord(fp);
-	cpu->stackPointer = getNextWord(fp);
+	cpu->programCounter = _getNextWord(fp);
+	cpu->stackPointer = _getNextWord(fp);
 
-	cpu->interruptVector = getNextByte(fp);
-	cpu->refreshCounter = getNextByte(fp);
+	cpu->interruptVector = _getNextByte(fp);
+	cpu->refreshCounter = _getNextByte(fp);
 
 	fgetc(fp); // Not sure about this yet (byte 12)
 
 	// Load remaining main CPU registers
-	cpu->regE = getNextByte(fp);
-	cpu->regD = getNextByte(fp);
+	cpu->regE = _getNextByte(fp);
+	cpu->regD = _getNextByte(fp);
 
 	// Load shadow registers
-	cpu->_regC = getNextByte(fp);
-	cpu->_regB = getNextByte(fp);
-	cpu->_regE = getNextByte(fp);
-	cpu->_regD = getNextByte(fp);
-	cpu->_regL = getNextByte(fp);
-	cpu->_regH = getNextByte(fp);
-	cpu->_regA = getNextByte(fp);
-	cpu->_regF = getNextByte(fp);
+	cpu->_regC = _getNextByte(fp);
+	cpu->_regB = _getNextByte(fp);
+	cpu->_regE = _getNextByte(fp);
+	cpu->_regD = _getNextByte(fp);
+	cpu->_regL = _getNextByte(fp);
+	cpu->_regH = _getNextByte(fp);
+	cpu->_regA = _getNextByte(fp);
+	cpu->_regF = _getNextByte(fp);
 
 	// Load index registers
-	cpu->regIY = getNextWord(fp);
-	cpu->regIX = getNextWord(fp);
+	cpu->regIY = _getNextWord(fp);
+	cpu->regIX = _getNextWord(fp);
 }
 
 /**
@@ -68,16 +68,16 @@ void loadRegisters(FILE* fp, Z80* cpu) {
  * @param fp - The file pointer for the .z80 file.
  * @param cpu - The Z80 struct in which the registers are situated.
  */
-void loadAdditionalHeaderContents(FILE* fp, Z80* cpu) {
+void _loadAdditionalHeaderContents(FILE* fp, Z80* cpu) {
 	// Load actual program counter contents
 	if(fseek(fp, 32, SEEK_SET) != 0) {
 		fprintf(stderr, "Failed to set file pointer to start of file.\n");
 		exit(EXIT_FAILURE);
 	}
-	cpu->programCounter = getNextWord(fp);
+	cpu->programCounter = _getNextWord(fp);
 }
 
-void loadMemoryBlocks(FILE* fp, u8 memory[]) {
+void _loadMemoryBlocks(FILE* fp, u8 memory[]) {
 	// Maps page numbers to points in memory - page 4 == 0x8000 in memory
 	u16 pageMapping[12] = {0, 0, 0, 0, 0x8000, 0xc000, 0, 0, 0x4000, 0, 0, 0};
 
@@ -98,19 +98,19 @@ void loadMemoryBlocks(FILE* fp, u8 memory[]) {
 
 	while(complete != 1) {
 
-		blockLength = getNextWord(fp);
-		currentPage = getNextByte(fp);
+		blockLength = _getNextWord(fp);
+		currentPage = _getNextByte(fp);
 
 		// Move the memory pointer to the correct place in memory for this page
 		memoryPtr = &memory[pageMapping[currentPage]];
 
 		for (int i = 0; i < blockLength; i++) {
-			bytes[0] = getNextByte(fp);
+			bytes[0] = _getNextByte(fp);
 			if(bytes[0] == 0xED) {
-				bytes[1] = getNextByte(fp);
+				bytes[1] = _getNextByte(fp);
 				if(bytes[1] == 0xED) {
-					bytes[2] = getNextByte(fp);
-					bytes[3] = getNextByte(fp);
+					bytes[2] = _getNextByte(fp);
+					bytes[3] = _getNextByte(fp);
 					for(int j = 0; j < bytes[2]; j++) {
 						*memoryPtr = bytes[3];
 						memoryPtr++;
@@ -132,7 +132,7 @@ void loadMemoryBlocks(FILE* fp, u8 memory[]) {
 	}
 }
 
-int getNextByte(FILE* fp) {
+int _getNextByte(FILE* fp) {
 	int byte = fgetc(fp);
 	if(byte == EOF) {
 		fprintf(stderr, "Failed to get next byte from file.\n");
@@ -141,7 +141,7 @@ int getNextByte(FILE* fp) {
 	return byte;
 }
 
-int getNextWord(FILE* fp) {
+int _getNextWord(FILE* fp) {
 	int word;
 	if(fread(&word, sizeof(u16), 1, fp) != 1) {
 		fprintf(stderr, "Failed to get next word from file.\n");
