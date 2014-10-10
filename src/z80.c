@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "z80.h"
 
 void initCPU(Z80* cpu) {
@@ -19,4 +22,18 @@ void initCPU(Z80* cpu) {
 	cpu->interruptVector = 0x00;
 	cpu->refreshCounter = 0x00;
 	cpu->statusFlags = 0x00;
+}
+
+u8 fetchOpcode(Z80* cpu, u8 memory[]) {
+	return memory[++(cpu->programCounter)];
+}
+
+void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
+	switch(opcode) {
+		case 0xC1:
+			break;
+		default:
+			fprintf(stderr, "Unknown opcode -> 0x%x\n", opcode);
+			exit(EXIT_FAILURE);
+	}
 }

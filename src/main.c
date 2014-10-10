@@ -20,8 +20,16 @@ int main(int argc, char **argv) {
 		loadRom(argv[1], &CPU, RAM); // Load ROM from file into memory
 
 		// Debugging
-		printRAM();
-		printf("ProgCount -> 0x%x\n", RAM[CPU.programCounter]);
+		// printRAM();
+		// printf("ProgCount -> 0x%x\n", RAM[CPU.programCounter]);
+		// printf("StackPointer -> 0x%x\n", RAM[CPU.stackPointer]);
+		// printf("RegB -> 0x%x\n", CPU.regB);
+		// printf("RegC -> 0x%x\n", CPU.regC);
+
+		for(;;) {
+			u8 opcode = fetchOpcode(&CPU, RAM);
+			executeOpcode(&CPU, RAM, opcode);
+		}
 
 		return 0;
 	}

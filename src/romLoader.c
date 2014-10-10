@@ -14,6 +14,8 @@ void loadRom(char *filename, Z80* cpu, u8 memory[]) {
 	_loadRegisters(fp, cpu);
 	_loadAdditionalHeaderContents(fp, cpu);
 	_loadMemoryBlocks(fp, memory);
+
+	fclose(fp);
 }
 
 /**
