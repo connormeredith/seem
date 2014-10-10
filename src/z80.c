@@ -28,9 +28,24 @@ u8 fetchOpcode(Z80* cpu, u8 memory[]) {
 	return memory[++(cpu->programCounter)];
 }
 
-void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
+void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
+	s8 signedTemp;
+
 	switch(opcode) {
-		case 0xC1:
+		case 0x10: // djnz
+			cpu->regB--;
+			if(cpu->regB != 0) {
+				signedTemp = ram[++(cpu->programCounter)]; // Requires signed addition
+				cpu->programCounter+=signedTemp;
+			} else {
+				cpu->programCounter++; // Skip the jump offset
+			}
+			break;
+		case 0xC1: //pop bc
+			cpu->regC = ram[cpu->stackPointer];
+			cpu->stackPointer++;
+			cpu->regB = ram[cpu->stackPointer];
+			cpu->stackPointer++;
 			break;
 		default:
 			fprintf(stderr, "Unknown opcode -> 0x%x\n", opcode);
