@@ -50,6 +50,15 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 				cpu->programCounter++; // Skip the jump offset
 			}
 			break;
+		case 0x32: // ld **, a
+			unsigned16Temp = ram[++cpu->programCounter];
+			unsigned16Temp += ram[++cpu->programCounter] << 8;
+			printf("0x%x\n", unsigned16Temp);
+			ram[unsigned16Temp] = cpu->regA;
+			break;
+		case 0xAF: // XOR A
+			cpu->regA = cpu->regA ^ cpu->regA;
+			break;
 		case 0xC1: // pop bc
 			cpu->regC = ram[cpu->stackPointer];
 			cpu->stackPointer++;
