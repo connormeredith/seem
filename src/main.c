@@ -26,10 +26,26 @@ int main(int argc, char **argv) {
 		// printf("RegB -> 0x%x\n", CPU.regB);
 		// printf("RegC -> 0x%x\n", CPU.regC);
 
+		executeOpcode(&CPU, RAM, RAM[CPU.programCounter]);
 		for(;;) {
+			// printf("-------------\n");
 			u8 opcode = fetchOpcode(&CPU, RAM);
+
+			// if(CPU.programCounter == 0x6F0F) {
+			// 	printf("regA - 0x%x\n", CPU.regA);
+			// 	printf("regB - 0x%x\n", CPU.regB);
+			// 	printf("regC - 0x%x\n", CPU.regC);
+			// 	printf("regD - 0x%x\n", CPU.regD);
+			// 	printf("regE - 0x%x\n", CPU.regE);
+
+			// 	printf("BREAKPOINT\n");
+			// 	break;
+			// }
+
 			executeOpcode(&CPU, RAM, opcode);
 		}
+
+		printRAM();
 
 		return 0;
 	}

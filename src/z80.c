@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "z80.h"
+#include "main.h"
 
 void initCPU(Z80* cpu) {
 	cpu->regA = 0x00;
@@ -29,26 +30,58 @@ u8 fetchOpcode(Z80* cpu, u8 memory[]) {
 }
 
 void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
-	s8 signedTemp;
+	u16 unsigned16Temp;
+	s8 signed8Temp;
+
+	// printf("--------------\n");
+	// printf("count -> 0x%x\n", cpu->programCounter);
+	// printf("opcode -> 0x%x\n", opcode);
 
 	switch(opcode) {
+		case 0x6: // ld b, n
+			cpu->regB = ram[++cpu->programCounter];
+			break;
 		case 0x10: // djnz
 			cpu->regB--;
 			if(cpu->regB != 0) {
-				signedTemp = ram[++(cpu->programCounter)]; // Requires signed addition
-				cpu->programCounter+=signedTemp;
+				signed8Temp = ram[++cpu->programCounter];
+				cpu->programCounter+=signed8Temp; // Requires signed addition
 			} else {
 				cpu->programCounter++; // Skip the jump offset
 			}
 			break;
-		case 0xC1: //pop bc
+		case 0xC1: // pop bc
 			cpu->regC = ram[cpu->stackPointer];
 			cpu->stackPointer++;
 			cpu->regB = ram[cpu->stackPointer];
 			cpu->stackPointer++;
 			break;
+		case 0xC5: // push bc
+			cpu->stackPointer--;
+			ram[cpu->stackPointer] = cpu->regB;
+			cpu->stackPointer--;
+			ram[cpu->stackPointer] = cpu->regC;
+			break;
+		case 0xC9: // ret
+			cpu->programCounter = ram[cpu->stackPointer];
+			unsigned16Temp = ram[++cpu->stackPointer] << 8;
+			cpu->stackPointer++;
+			cpu->programCounter += unsigned16Temp;
+			--cpu->programCounter;
+			break;
+		case 0xCD: // CALL **
+			cpu->programCounter += 0x3;
+			ram[--cpu->stackPointer] = cpu->programCounter >> 8;
+			ram[--cpu->stackPointer] = cpu->programCounter;
+			cpu->programCounter -= 0x2;
+			unsigned16Temp = ram[cpu->programCounter];
+			cpu->programCounter = (ram[++cpu->programCounter] << 8) + unsigned16Temp;
+			--cpu->programCounter;
+			break;
 		default:
+			printf("count -> 0x%x\n", cpu->programCounter);
 			fprintf(stderr, "Unknown opcode -> 0x%x\n", opcode);
+			// printRAM();
 			exit(EXIT_FAILURE);
 	}
 }
