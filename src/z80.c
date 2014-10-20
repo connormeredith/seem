@@ -56,6 +56,12 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 			cpu->regB = ram[cpu->stackPointer];
 			cpu->stackPointer++;
 			break;
+		case 0xC3: // jp **
+			unsigned16Temp = ram[++cpu->programCounter];
+			unsigned16Temp += ram[++cpu->programCounter] << 8;
+			cpu->programCounter = unsigned16Temp;
+			--cpu->programCounter;
+			break;
 		case 0xC5: // push bc
 			cpu->stackPointer--;
 			ram[cpu->stackPointer] = cpu->regB;
