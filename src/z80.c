@@ -38,6 +38,10 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 	// printf("opcode -> 0x%x\n", opcode);
 
 	switch(opcode) {
+		case 0x1: // ld bc, **
+			cpu->regC = ram[++cpu->programCounter];
+			cpu->regB = ram[++cpu->programCounter];
+			break;
 		case 0x6: // ld b, n
 			cpu->regB = ram[++cpu->programCounter];
 			break;
