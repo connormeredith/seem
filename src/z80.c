@@ -54,6 +54,12 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 			cpu->regL = ram[++cpu->programCounter];
 			cpu->regH = ram[++cpu->programCounter];
 			break;
+		case 0x22: // ld **, hl
+			unsigned16Temp = ram[++cpu->programCounter];
+			unsigned16Temp += ram[++cpu->programCounter] << 8;
+			ram[unsigned16Temp] = cpu->regL;
+			ram[++unsigned16Temp] = cpu->regH;
+			break;
 		case 0x32: // ld **, a
 			unsigned16Temp = ram[++cpu->programCounter];
 			unsigned16Temp += ram[++cpu->programCounter] << 8;
