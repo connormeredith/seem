@@ -5,15 +5,36 @@
 #include "Z80.h"
 
 void loadRom(char *filename, Z80* cpu, u8 memory[]) {
+	
+	_loadMonitorProgram(memory);
+
 	FILE* fp = fopen(filename, "rb");
 	if(fp == NULL) {
 		printf("Failed to open file.\n");
 		//ERROR
 	}
 
+
 	_loadRegisters(fp, cpu);
 	_loadAdditionalHeaderContents(fp, cpu);
 	_loadMemoryBlocks(fp, memory);
+
+	fclose(fp);
+}
+
+void _loadMonitorProgram(u8 memory[]) {
+	FILE* fp = fopen("./roms/48.rom", "rb");
+	if(fp == NULL) {
+		printf("Failed to open file.\n");
+		//ERROR
+	}
+
+	u16 ramPointer = 0x0;
+	int monitorByte;
+
+	while((monitorByte = fgetc(fp)) != EOF) {
+		memory[ramPointer++] = monitorByte;
+	}
 
 	fclose(fp);
 }

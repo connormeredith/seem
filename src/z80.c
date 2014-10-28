@@ -31,7 +31,9 @@ u8 fetchOpcode(Z80* cpu, u8 memory[]) {
 
 void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 	u16 unsigned16Temp;
+	u16 unsigned16Temp2;
 	s8 signed8Temp;
+	u8 extendedOpcode;
 
 	// printf("--------------\n");
 	// printf("count -> 0x%x\n", cpu->programCounter);
@@ -81,8 +83,7 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 			break;
 		case 0xC1: // pop bc
 			cpu->regC = ram[cpu->stackPointer];
-			cpu->stackPointer++;
-			cpu->regB = ram[cpu->stackPointer];
+			cpu->regB = ram[++cpu->stackPointer];
 			cpu->stackPointer++;
 			break;
 		case 0xC3: // jp **
@@ -92,10 +93,8 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 			--cpu->programCounter;
 			break;
 		case 0xC5: // push bc
-			cpu->stackPointer--;
-			ram[cpu->stackPointer] = cpu->regB;
-			cpu->stackPointer--;
-			ram[cpu->stackPointer] = cpu->regC;
+			ram[--cpu->stackPointer] = cpu->regB;
+			ram[--cpu->stackPointer] = cpu->regC;
 			break;
 		case 0xC9: // ret
 			cpu->programCounter = ram[cpu->stackPointer];
@@ -112,6 +111,56 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 			unsigned16Temp = ram[cpu->programCounter];
 			cpu->programCounter = (ram[++cpu->programCounter] << 8) + unsigned16Temp;
 			--cpu->programCounter;
+			break;
+		case 0xDD: // IX instruction set
+			extendedOpcode = ram[++cpu->programCounter];
+			switch(extendedOpcode) {
+				case 0xE5: // push IX
+					ram[--cpu->stackPointer] = cpu->regIX >> 8;
+					ram[--cpu->stackPointer] = cpu->regIX;
+					break;
+				default:
+					printf("count -> 0x%x\n", cpu->programCounter);
+					fprintf(stderr, "Unknown IX opcode -> 0x%x\n", extendedOpcode);
+					exit(EXIT_FAILURE);
+			}
+			break;
+		case 0xED: // Extended instruction set
+			extendedOpcode = ram[++cpu->programCounter];
+			switch(extendedOpcode) {
+				case 0xB0: // ldir
+					unsigned16Temp = cpu->regH << 8;
+					unsigned16Temp += cpu->regL;
+					unsigned16Temp2 = cpu->regD << 8;
+					unsigned16Temp2 += cpu->regE;
+					ram[unsigned16Temp2] = ram[unsigned16Temp];
+					
+					unsigned16Temp++;
+					cpu->regL = unsigned16Temp;
+					cpu->regH = unsigned16Temp >> 8;
+
+					unsigned16Temp2++;
+					cpu->regE = unsigned16Temp2;
+					cpu->regD = unsigned16Temp2 >> 8;
+
+					unsigned16Temp = cpu->regB << 8;
+					unsigned16Temp += cpu->regC;
+					
+					unsigned16Temp--;
+					cpu->regC = unsigned16Temp;
+					cpu->regB = unsigned16Temp >> 8;
+
+					// Repeat instruction if BC is not zero
+					if(unsigned16Temp != 0) {
+						cpu->programCounter -= 2;
+					}
+
+					break;
+				default:
+					printf("count -> 0x%x\n", cpu->programCounter);
+					fprintf(stderr, "Unknown extended opcode -> 0x%x\n", opcode);
+					exit(EXIT_FAILURE);
+			}
 			break;
 		default:
 			printf("count -> 0x%x\n", cpu->programCounter);

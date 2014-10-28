@@ -3,6 +3,9 @@
 
 void loadRom(char*, Z80*, u8[]);
 
+// Monitor loader
+void _loadMonitorProgram(u8 memory[]);
+
 // ROM loading functions
 void _loadRegisters(FILE*, Z80*);
 void _loadAdditionalHeaderContents(FILE*, Z80*);
