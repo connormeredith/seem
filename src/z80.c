@@ -69,6 +69,12 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 			ram[unsigned16Temp] = cpu->HL.byte.left;
 			ram[++unsigned16Temp] = cpu->HL.byte.right;
 			break;
+		case 0x23: // inc hl
+			cpu->HL.pair++;
+			break;
+		case 0x26: // ld h, *
+			cpu->HL.byte.left = ram[++cpu->programCounter];
+			break;
 		case 0x32: // ld **, a
 			unsigned16Temp = ram[++cpu->programCounter];
 			unsigned16Temp += ram[++cpu->programCounter] << 8;
@@ -77,8 +83,26 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 		case 0x3E: // ld a, *
 			cpu->AF.byte.left = ram[++cpu->programCounter];
 			break;
+		case 0x56: // ld d, (hl)
+			cpu->DE.byte.left = ram[cpu->HL.pair];
+			break;
+		case 0x5E: // ld e, (hl)
+			cpu->DE.byte.right = ram[cpu->HL.pair];
+			break;
+		case 0x6F: // ld l, a
+			cpu->HL.byte.right = cpu->AF.byte.left;
+			break;
+		case 0x7A: // ld a, d
+			cpu->AF.byte.left = cpu->DE.byte.left;
+			break;
+		case 0x87: // add a, a
+			cpu->AF.byte.left += cpu->AF.byte.left;
+			break;
 		case 0xAF: // XOR A
 			cpu->AF.byte.left = cpu->AF.byte.left ^ cpu->AF.byte.left;
+			break;
+		case 0xB3: // OR e
+			cpu->AF.byte.left |= cpu->DE.byte.right;
 			break;
 		case 0xC1: // pop bc
 			cpu->BC.byte.right = ram[cpu->stackPointer];
@@ -94,6 +118,9 @@ void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
 		case 0xC5: // push bc
 			ram[--cpu->stackPointer] = cpu->BC.byte.left;
 			ram[--cpu->stackPointer] = cpu->BC.byte.right;
+			break;
+		case 0xC6: // add a, *
+			cpu->AF.byte.left += ram[++cpu->programCounter];
 			break;
 		case 0xC9: // ret
 			cpu->programCounter = ram[cpu->stackPointer];
