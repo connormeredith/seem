@@ -51,12 +51,12 @@ void _loadRegisters(FILE* fp, Z80* cpu) {
 	}
 
 	// Load main CPU registers
-	cpu->regA = _getNextByte(fp);
-	cpu->regF = _getNextByte(fp);
-	cpu->regC = _getNextByte(fp);
-	cpu->regB = _getNextByte(fp);
-	cpu->regL = _getNextByte(fp);
-	cpu->regH = _getNextByte(fp);
+	cpu->AF.byte.left = _getNextByte(fp);
+	cpu->AF.byte.right = _getNextByte(fp);
+	cpu->BC.byte.right = _getNextByte(fp);
+	cpu->BC.byte.left = _getNextByte(fp);
+	cpu->HL.byte.right = _getNextByte(fp);
+	cpu->HL.byte.left = _getNextByte(fp);
 
 	// Load program counter and stack pointer
 	cpu->programCounter = _getNextWord(fp);
@@ -68,8 +68,8 @@ void _loadRegisters(FILE* fp, Z80* cpu) {
 	fgetc(fp); // Not sure about this yet (byte 12)
 
 	// Load remaining main CPU registers
-	cpu->regE = _getNextByte(fp);
-	cpu->regD = _getNextByte(fp);
+	cpu->DE.byte.right = _getNextByte(fp);
+	cpu->DE.byte.left = _getNextByte(fp);
 
 	// Load shadow registers
 	cpu->_regC = _getNextByte(fp);
@@ -82,8 +82,8 @@ void _loadRegisters(FILE* fp, Z80* cpu) {
 	cpu->_regF = _getNextByte(fp);
 
 	// Load index registers
-	cpu->regIY = _getNextWord(fp);
-	cpu->regIX = _getNextWord(fp);
+	cpu->IY.pair = _getNextWord(fp);
+	cpu->IX.pair = _getNextWord(fp);
 }
 
 /**

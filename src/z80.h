@@ -4,17 +4,30 @@
 
 	#include "types.h"
 
+	struct bytePair {
+		u8 right;
+		u8 left;
+	} bytePair;
+
+	union registerPair {
+		struct bytePair byte;
+		u16 pair;
+	} registerPair;
+
 	struct z80 {
 
 		// Main registers
-		u8 regA, regB, regC, regD, regE, regF, regH, regL;
+		union registerPair AF, BC, DE, HL, IX, IY;
+
+
+		// u8 regA, regB, regC, regD, regE, regF, regH, regL;
 		u16 stackPointer, programCounter;
 
 		// Shadow registers
 		u8 _regA, _regB, _regC, _regD, _regE, _regF, _regH, _regL;
 
 		// Index registers
-		u16 regIX, regIY;
+		// u16 regIX, regIY;
 
 		// Other registers
 		u8 interruptVector, refreshCounter, statusFlags;
