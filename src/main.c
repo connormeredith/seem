@@ -16,7 +16,6 @@ int main(int argc, char **argv) {
 		printf("Usage: ./emulator [filename]\n");
 		return 1;
 	} else {
-		initCPU(&CPU); // Zero CPU registers
 		loadRom(argv[1], &CPU, RAM); // Load ROM from file into memory
 
 		// Debugging

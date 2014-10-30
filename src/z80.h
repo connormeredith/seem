@@ -35,7 +35,6 @@
 
 	typedef struct z80 Z80;
 
-	void initCPU(Z80*);
 	u8 fetchOpcode(Z80*, u8[]);
 	void executeOpcode(Z80*, u8[], u8);
 
