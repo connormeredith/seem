@@ -34,7 +34,6 @@ u8 fetchOpcode(Z80* cpu, u8 memory[]) {
  */
 void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 	u16 unsigned16Temp;
-	u8 unsigned8Temp;
 	s8 signed8Temp;
 	u8 extendedOpcode;
 
@@ -51,8 +50,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0x1E:	// ld e, *
 		case 0x2E:	// ld l, *
 		case 0x3E:	// ld a, *
-			unsigned8Temp = (opcode & 0x38) >> 3;
-			*registerHexLookup[unsigned8Temp] = memory[++cpu->pc];
+			*registerHexLookup[((opcode & 0x38) >> 3)] = memory[++cpu->pc];
 			break;
 		case 0x10: // djnz
 			cpu->BC.byte[1]--;
@@ -83,28 +81,67 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0x23: // inc hl
 			cpu->HL.pair++;
 			break;
-		// case 0x26: // ld h, *
-		// 	cpu->HL.byte[0] = memory[++cpu->pc];
-		// 	break;
 		case 0x32: // ld **, a
 			unsigned16Temp = memory[++cpu->pc];
 			unsigned16Temp += memory[++cpu->pc] << 8;
 			memory[unsigned16Temp] = cpu->AF.left;
 			break;
-		// case 0x3E: // ld a, *
-		// 	cpu->AF.left = memory[++cpu->pc];
-		// 	break;
+		case 0x40: // ld b, b
+		case 0x41: // ld b, c
+		case 0x42: // ld b, d
+		case 0x43: // ld b, e
+		case 0x44: // ld b, h
+		case 0x45: // ld b, l
+		case 0x47: // ld b, a
+		case 0x48: // ld c, b
+		case 0x49: // ld c, c
+		case 0x4A: // ld c, d
+		case 0x4B: // ld c, e
+		case 0x4C: // ld c, h
+		case 0x4D: // ld c, l
+		case 0x4F: // ld c, a
+		case 0x50: // ld d, b
+		case 0x51: // ld d, c
+		case 0x52: // ld d, d
+		case 0x53: // ld d, e
+		case 0x54: // ld d, h
+		case 0x55: // ld d, l
+		case 0x57: // ld d, a
+		case 0x58: // ld e, b
+		case 0x59: // ld e, c
+		case 0x5A: // ld e, d
+		case 0x5B: // ld e, e
+		case 0x5C: // ld e, h
+		case 0x5D: // ld e, l
+		case 0x5F: // ld e, a
+		case 0x60: // ld h, b
+		case 0x61: // ld h, c
+		case 0x62: // ld h, d
+		case 0x63: // ld h, e
+		case 0x64: // ld h, h
+		case 0x65: // ld h, l
+		case 0x67: // ld h, a
+		case 0x68: // ld l, b
+		case 0x69: // ld l, c
+		case 0x6A: // ld l, d
+		case 0x6B: // ld l, e
+		case 0x6C: // ld l, h
+		case 0x6D: // ld l, l
+		case 0x6F: // ld l, a
+		case 0x78: // ld a, b
+		case 0x79: // ld a, c
+		case 0x7A: // ld a, d
+		case 0x7B: // ld a, e
+		case 0x7C: // ld a, h
+		case 0x7D: // ld a, l
+		case 0x7F: // ld a, a
+			*registerHexLookup[((opcode & 0x38) >> 3)] = *registerHexLookup[(opcode & 0x07)];
+			break;
 		case 0x56: // ld d, (hl)
 			cpu->DE.byte[1] = memory[cpu->HL.pair];
 			break;
 		case 0x5E: // ld e, (hl)
 			cpu->DE.byte[0] = memory[cpu->HL.pair];
-			break;
-		case 0x6F: // ld l, a
-			cpu->HL.byte[0] = cpu->AF.left;
-			break;
-		case 0x7A: // ld a, d
-			cpu->AF.left = cpu->DE.byte[1];
 			break;
 		case 0x87: // add a, a
 			cpu->AF.left += cpu->AF.left;
