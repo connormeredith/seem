@@ -4,156 +4,166 @@
 #include "z80.h"
 #include "main.h"
 
+/**
+ * Increments the program counter and grabs the next instruction from memory.
+ * @param  cpu    The Z80 processor struct.
+ * @param  memory The ZX Spectrum's memory array.
+ * @return        The next 8 bit opcode.
+ */
 u8 fetchOpcode(Z80* cpu, u8 memory[]) {
-	return memory[++(cpu->programCounter)];
+	return memory[++cpu->pc];
 }
 
-void executeOpcode(Z80* cpu, u8 ram[], u8 opcode) {
+/**
+ * Executes the opcode that is passed into the function.
+ * @param cpu    The Z80 processor struct.
+ * @param memory The ZX Spectrum's memory array.
+ * @param opcode The 8 bit opcode to be executed.
+ */
+void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 	u16 unsigned16Temp;
 	s8 signed8Temp;
 	u8 extendedOpcode;
 
-	// printf("--------------\n");
-	// printf("count -> 0x%x\n", cpu->programCounter);
-	// printf("opcode -> 0x%x\n", opcode);
-
 	switch(opcode) {
 		case 0x1: // ld bc, **
-			cpu->BC.byte.right = ram[++cpu->programCounter];
-			cpu->BC.byte.left = ram[++cpu->programCounter];
+			cpu->BC.byte[0] = memory[++cpu->pc];
+			cpu->BC.byte[1] = memory[++cpu->pc];
 			break;
 		case 0x6: // ld b, n
-			cpu->BC.byte.left = ram[++cpu->programCounter];
+			cpu->BC.byte[1] = memory[++cpu->pc];
 			break;
 		case 0x10: // djnz
-			cpu->BC.byte.left--;
-			if(cpu->BC.byte.left != 0) {
-				signed8Temp = ram[++cpu->programCounter];
-				cpu->programCounter+=signed8Temp; // Requires signed addition
+			cpu->BC.byte[1]--;
+			if(cpu->BC.byte[1] != 0) {
+				signed8Temp = memory[++cpu->pc];
+				cpu->pc+=signed8Temp; // Requires signed addition
 			} else {
-				cpu->programCounter++; // Skip the jump offset
+				cpu->pc++; // Skip the jump offset
 			}
 			break;
 		case 0x11: // ld de, **
-			cpu->DE.byte.right = ram[++cpu->programCounter];
-			cpu->DE.byte.left = ram[++cpu->programCounter];
+			cpu->DE.byte[0] = memory[++cpu->pc];
+			cpu->DE.byte[1] = memory[++cpu->pc];
+			break;
+		case 0x20: // jr nz, *
+
 			break;
 		case 0x21: // ld hl, **
-			cpu->HL.byte.right = ram[++cpu->programCounter];
-			cpu->HL.byte.left = ram[++cpu->programCounter];
+			cpu->HL.byte[0] = memory[++cpu->pc];
+			cpu->HL.byte[1] = memory[++cpu->pc];
 			break;
 		case 0x22: // ld **, hl
-			unsigned16Temp = ram[++cpu->programCounter];
-			unsigned16Temp += ram[++cpu->programCounter] << 8;
-			ram[unsigned16Temp] = cpu->HL.byte.left;
-			ram[++unsigned16Temp] = cpu->HL.byte.right;
+			unsigned16Temp = memory[++cpu->pc];
+			unsigned16Temp += memory[++cpu->pc] << 8;
+			memory[unsigned16Temp] = cpu->HL.byte[1];
+			memory[++unsigned16Temp] = cpu->HL.byte[0];
 			break;
 		case 0x23: // inc hl
 			cpu->HL.pair++;
 			break;
 		case 0x26: // ld h, *
-			cpu->HL.byte.left = ram[++cpu->programCounter];
+			cpu->HL.byte[0] = memory[++cpu->pc];
 			break;
 		case 0x32: // ld **, a
-			unsigned16Temp = ram[++cpu->programCounter];
-			unsigned16Temp += ram[++cpu->programCounter] << 8;
-			ram[unsigned16Temp] = cpu->AF.byte.left;
+			unsigned16Temp = memory[++cpu->pc];
+			unsigned16Temp += memory[++cpu->pc] << 8;
+			memory[unsigned16Temp] = cpu->AF.left;
 			break;
 		case 0x3E: // ld a, *
-			cpu->AF.byte.left = ram[++cpu->programCounter];
+			cpu->AF.left = memory[++cpu->pc];
 			break;
 		case 0x56: // ld d, (hl)
-			cpu->DE.byte.left = ram[cpu->HL.pair];
+			cpu->DE.byte[1] = memory[cpu->HL.pair];
 			break;
 		case 0x5E: // ld e, (hl)
-			cpu->DE.byte.right = ram[cpu->HL.pair];
+			cpu->DE.byte[0] = memory[cpu->HL.pair];
 			break;
 		case 0x6F: // ld l, a
-			cpu->HL.byte.right = cpu->AF.byte.left;
+			cpu->HL.byte[0] = cpu->AF.left;
 			break;
 		case 0x7A: // ld a, d
-			cpu->AF.byte.left = cpu->DE.byte.left;
+			cpu->AF.left = cpu->DE.byte[1];
 			break;
 		case 0x87: // add a, a
-			cpu->AF.byte.left += cpu->AF.byte.left;
+			cpu->AF.left += cpu->AF.left;
 			break;
 		case 0xAF: // XOR A
-			cpu->AF.byte.left = cpu->AF.byte.left ^ cpu->AF.byte.left;
+			cpu->AF.left = cpu->AF.left ^ cpu->AF.left;
 			break;
 		case 0xB3: // OR e
-			cpu->AF.byte.left |= cpu->DE.byte.right;
+			cpu->AF.left |= cpu->DE.byte[0];
 			break;
 		case 0xC1: // pop bc
-			cpu->BC.byte.right = ram[cpu->stackPointer];
-			cpu->BC.byte.left = ram[++cpu->stackPointer];
-			cpu->stackPointer++;
+			cpu->BC.byte[0] = memory[cpu->sp];
+			cpu->BC.byte[1] = memory[++cpu->sp];
+			cpu->sp++;
 			break;
 		case 0xC3: // jp **
-			unsigned16Temp = ram[++cpu->programCounter];
-			unsigned16Temp += ram[++cpu->programCounter] << 8;
-			cpu->programCounter = unsigned16Temp;
-			--cpu->programCounter;
+			unsigned16Temp = memory[++cpu->pc];
+			unsigned16Temp += memory[++cpu->pc] << 8;
+			cpu->pc = unsigned16Temp;
+			--cpu->pc;
 			break;
 		case 0xC5: // push bc
-			ram[--cpu->stackPointer] = cpu->BC.byte.left;
-			ram[--cpu->stackPointer] = cpu->BC.byte.right;
+			memory[--cpu->sp] = cpu->BC.byte[1];
+			memory[--cpu->sp] = cpu->BC.byte[0];
 			break;
 		case 0xC6: // add a, *
-			cpu->AF.byte.left += ram[++cpu->programCounter];
+			cpu->AF.left += memory[++cpu->pc];
 			break;
 		case 0xC9: // ret
-			cpu->programCounter = ram[cpu->stackPointer];
-			unsigned16Temp = ram[++cpu->stackPointer] << 8;
-			cpu->stackPointer++;
-			cpu->programCounter += unsigned16Temp;
-			--cpu->programCounter;
+			cpu->pc = memory[cpu->sp];
+			unsigned16Temp = memory[++cpu->sp] << 8;
+			cpu->sp++;
+			cpu->pc += unsigned16Temp;
+			--cpu->pc;
 			break;
 		case 0xCD: // CALL **
-			cpu->programCounter += 0x3;
-			ram[--cpu->stackPointer] = cpu->programCounter >> 8;
-			ram[--cpu->stackPointer] = cpu->programCounter;
-			cpu->programCounter -= 0x2;
-			unsigned16Temp = ram[cpu->programCounter];
-			cpu->programCounter = (ram[++cpu->programCounter] << 8) + unsigned16Temp;
-			--cpu->programCounter;
+			cpu->pc += 0x3;
+			memory[--cpu->sp] = cpu->pc >> 8;
+			memory[--cpu->sp] = cpu->pc;
+			cpu->pc -= 0x2;
+			unsigned16Temp = memory[cpu->pc];
+			cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+			--cpu->pc;
 			break;
 		case 0xDD: // IX instruction set
-			extendedOpcode = ram[++cpu->programCounter];
+			extendedOpcode = memory[++cpu->pc];
 			switch(extendedOpcode) {
 				case 0xE5: // push IX
-					ram[--cpu->stackPointer] = cpu->IX.byte.left;
-					ram[--cpu->stackPointer] = cpu->IX.byte.right;
+					memory[--cpu->sp] = cpu->IX.byte[1];
+					memory[--cpu->sp] = cpu->IX.byte[0];
 					break;
 				default:
-					printf("count -> 0x%x\n", cpu->programCounter);
+					printf("count -> 0x%x\n", cpu->pc);
 					fprintf(stderr, "Unknown IX opcode -> 0x%x\n", extendedOpcode);
 					exit(EXIT_FAILURE);
 			}
 			break;
 		case 0xED: // Extended instruction set
-			extendedOpcode = ram[++cpu->programCounter];
+			extendedOpcode = memory[++cpu->pc];
 			switch(extendedOpcode) {
 				case 0xB0: // ldir
-					ram[cpu->DE.pair] = ram[cpu->HL.pair];
+					memory[cpu->DE.pair] = memory[cpu->HL.pair];
 					cpu->HL.pair++;
 					cpu->DE.pair++;
 					cpu->BC.pair--;
 
 					// Repeat instruction if BC is not zero
 					if(cpu->BC.pair != 0) {
-						cpu->programCounter -= 2;
+						cpu->pc -= 2;
 					}
 					break;
 				default:
-					printf("count -> 0x%x\n", cpu->programCounter);
+					printf("count -> 0x%x\n", cpu->pc);
 					fprintf(stderr, "Unknown extended opcode -> 0x%x\n", extendedOpcode);
 					exit(EXIT_FAILURE);
 			}
 			break;
 		default:
-			printf("count -> 0x%x\n", cpu->programCounter);
+			printf("count -> 0x%x\n", cpu->pc);
 			fprintf(stderr, "Unknown opcode -> 0x%x\n", opcode);
-			// printRAM();
 			exit(EXIT_FAILURE);
 	}
 }

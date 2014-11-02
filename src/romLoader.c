@@ -14,7 +14,6 @@ void loadRom(char *filename, Z80* cpu, u8 memory[]) {
 		//ERROR
 	}
 
-
 	_loadRegisters(fp, cpu);
 	_loadAdditionalHeaderContents(fp, cpu);
 	_loadMemoryBlocks(fp, memory);
@@ -51,35 +50,35 @@ void _loadRegisters(FILE* fp, Z80* cpu) {
 	}
 
 	// Load main CPU registers
-	cpu->AF.byte.left = _getNextByte(fp);
-	cpu->AF.byte.right = _getNextByte(fp);
-	cpu->BC.byte.right = _getNextByte(fp);
-	cpu->BC.byte.left = _getNextByte(fp);
-	cpu->HL.byte.right = _getNextByte(fp);
-	cpu->HL.byte.left = _getNextByte(fp);
+	cpu->AF.left = _getNextByte(fp);
+	cpu->AF.flags.all = _getNextByte(fp);
+	cpu->BC.byte[0] = _getNextByte(fp);
+	cpu->BC.byte[1] = _getNextByte(fp);
+	cpu->HL.byte[0] = _getNextByte(fp);
+	cpu->HL.byte[1] = _getNextByte(fp);
 
 	// Load program counter and stack pointer
-	cpu->programCounter = _getNextWord(fp);
-	cpu->stackPointer = _getNextWord(fp);
+	cpu->pc = _getNextWord(fp);
+	cpu->sp = _getNextWord(fp);
 
-	cpu->interruptVector = _getNextByte(fp);
-	cpu->refreshCounter = _getNextByte(fp);
+	cpu->I = _getNextByte(fp);
+	cpu->R = _getNextByte(fp);
 
 	fgetc(fp); // Not sure about this yet (byte 12)
 
 	// Load remaining main CPU registers
-	cpu->DE.byte.right = _getNextByte(fp);
-	cpu->DE.byte.left = _getNextByte(fp);
+	cpu->DE.byte[0] = _getNextByte(fp);
+	cpu->DE.byte[1] = _getNextByte(fp);
 
 	// Load shadow registers
-	cpu->_regC = _getNextByte(fp);
-	cpu->_regB = _getNextByte(fp);
-	cpu->_regE = _getNextByte(fp);
-	cpu->_regD = _getNextByte(fp);
-	cpu->_regL = _getNextByte(fp);
-	cpu->_regH = _getNextByte(fp);
-	cpu->_regA = _getNextByte(fp);
-	cpu->_regF = _getNextByte(fp);
+	cpu->_BC.byte[0] = _getNextByte(fp);
+	cpu->_BC.byte[1] = _getNextByte(fp);
+	cpu->_DE.byte[0] = _getNextByte(fp);
+	cpu->_DE.byte[1] = _getNextByte(fp);
+	cpu->_HL.byte[0] = _getNextByte(fp);
+	cpu->_HL.byte[1] = _getNextByte(fp);
+	cpu->_AF.left = _getNextByte(fp);
+	cpu->_AF.flags.all = _getNextByte(fp);
 
 	// Load index registers
 	cpu->IY.pair = _getNextWord(fp);
@@ -97,7 +96,7 @@ void _loadAdditionalHeaderContents(FILE* fp, Z80* cpu) {
 		fprintf(stderr, "Failed to set file pointer to start of file.\n");
 		exit(EXIT_FAILURE);
 	}
-	cpu->programCounter = _getNextWord(fp);
+	cpu->pc = _getNextWord(fp);
 }
 
 void _loadMemoryBlocks(FILE* fp, u8 memory[]) {

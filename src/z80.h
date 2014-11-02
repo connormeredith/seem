@@ -1,41 +1,47 @@
 #ifndef Z80_HEADER
-	
-	#define Z80_HEADER
+#define Z80_HEADER
 
-	#include "types.h"
+#include <stdint.h>
 
-	struct bytePair {
-		u8 right;
-		u8 left;
-	} bytePair;
+// Integer types.
+typedef uint_least16_t u16;
+typedef uint_least8_t u8;
+typedef int_least8_t s8;
 
-	union registerPair {
-		struct bytePair byte;
-		u16 pair;
-	} registerPair;
+// Register types.
+typedef union {
+	u8 byte[2];
+	u16 pair;
+} RegisterPair;
 
-	struct z80 {
+typedef union {
+	union {
+		struct {
+			u8 c : 1;		// Carry.
+			u8 : 1;			// Not used.
+			u8 pv : 1;	// Parity / Overflow.
+			u8 : 1;			// Not used.
+			u8 h : 1;		// Half carry.
+			u8 i : 1;		// Interrupt.
+			u8 z : 1;		// Zero.
+			u8 s : 1;		// Sign.
+		};
+		u8 all;				// Used for block loading of the flag register.
+	} flags;
+	u8 left;
+	u16 pair;
+} FlagRegister;
 
-		// Main registers
-		union registerPair AF, BC, DE, HL, IX, IY;
+// Processor struct.
+typedef struct {
+	FlagRegister AF, _AF;
+	RegisterPair BC, _BC, DE, _DE, HL, _HL, IX, _IX, IY, _IY;
+	u16 sp, pc;
+	u8 I, R;
+} Z80;
 
-
-		// u8 regA, regB, regC, regD, regE, regF, regH, regL;
-		u16 stackPointer, programCounter;
-
-		// Shadow registers
-		u8 _regA, _regB, _regC, _regD, _regE, _regF, _regH, _regL;
-
-		// Index registers
-		// u16 regIX, regIY;
-
-		// Other registers
-		u8 interruptVector, refreshCounter, statusFlags;
-	};
-
-	typedef struct z80 Z80;
-
-	u8 fetchOpcode(Z80*, u8[]);
-	void executeOpcode(Z80*, u8[], u8);
+// Processor functions.
+u8 fetchOpcode(Z80*, u8[]);
+void executeOpcode(Z80*, u8[], u8);
 
 #endif
