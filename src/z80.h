@@ -40,6 +40,8 @@ typedef struct {
 	u8 I, R;
 } Z80;
 
+void init(Z80* cpu);
+
 // Processor functions.
 u8 fetchOpcode(Z80*, u8[]);
 void executeOpcode(Z80*, u8[], u8);

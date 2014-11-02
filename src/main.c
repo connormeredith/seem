@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
 		printf("Usage: ./emulator [filename]\n");
 		return 1;
 	} else {
+		init(&CPU);
 		loadRom(argv[1], &CPU, RAM); // Load ROM from file into memory
 		executeOpcode(&CPU, RAM, RAM[CPU.pc]);
 		for(;;) {

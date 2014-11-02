@@ -4,6 +4,18 @@
 #include "z80.h"
 #include "main.h"
 
+u8* registerHexLookup[8];
+
+void init(Z80* cpu) {
+	registerHexLookup[0] = &cpu->BC.byte[1];
+	registerHexLookup[1] = &cpu->BC.byte[0];
+	registerHexLookup[2] = &cpu->DE.byte[1];
+	registerHexLookup[3] = &cpu->DE.byte[0];
+	registerHexLookup[4] = &cpu->HL.byte[1];
+	registerHexLookup[5] = &cpu->HL.byte[0];
+	registerHexLookup[7] = &cpu->AF.left;
+}
+
 /**
  * Increments the program counter and grabs the next instruction from memory.
  * @param  cpu    The Z80 processor struct.
@@ -22,6 +34,7 @@ u8 fetchOpcode(Z80* cpu, u8 memory[]) {
  */
 void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 	u16 unsigned16Temp;
+	u8 unsigned8Temp;
 	s8 signed8Temp;
 	u8 extendedOpcode;
 
@@ -30,8 +43,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 			cpu->BC.byte[0] = memory[++cpu->pc];
 			cpu->BC.byte[1] = memory[++cpu->pc];
 			break;
-		case 0x6: // ld b, n
-			cpu->BC.byte[1] = memory[++cpu->pc];
+		case 0x06:	// ld b, *
+		case 0x16:	// ld d, *
+		case 0x26:	// ld h, *
+		case 0x36:	// ld (hl), *
+		case 0x0E:	// ld c, *
+		case 0x1E:	// ld e, *
+		case 0x2E:	// ld l, *
+		case 0x3E:	// ld a, *
+			unsigned8Temp = (opcode & 0x38) >> 3;
+			*registerHexLookup[unsigned8Temp] = memory[++cpu->pc];
 			break;
 		case 0x10: // djnz
 			cpu->BC.byte[1]--;
@@ -62,17 +83,17 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0x23: // inc hl
 			cpu->HL.pair++;
 			break;
-		case 0x26: // ld h, *
-			cpu->HL.byte[0] = memory[++cpu->pc];
-			break;
+		// case 0x26: // ld h, *
+		// 	cpu->HL.byte[0] = memory[++cpu->pc];
+		// 	break;
 		case 0x32: // ld **, a
 			unsigned16Temp = memory[++cpu->pc];
 			unsigned16Temp += memory[++cpu->pc] << 8;
 			memory[unsigned16Temp] = cpu->AF.left;
 			break;
-		case 0x3E: // ld a, *
-			cpu->AF.left = memory[++cpu->pc];
-			break;
+		// case 0x3E: // ld a, *
+		// 	cpu->AF.left = memory[++cpu->pc];
+		// 	break;
 		case 0x56: // ld d, (hl)
 			cpu->DE.byte[1] = memory[cpu->HL.pair];
 			break;
