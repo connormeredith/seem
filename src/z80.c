@@ -86,7 +86,12 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 			}
 			break;
 		case 0x20: // jr nz, *
-
+			if(cpu->AF.flags.z == 0) {
+				signed8Temp = memory[++cpu->pc];
+				cpu->pc+=signed8Temp; // Requires signed addition
+			} else {
+				cpu->pc++; // Skip the jump offset
+			}
 			break;
 		case 0x22: // ld **, hl
 			unsigned16Temp = memory[++cpu->pc];
