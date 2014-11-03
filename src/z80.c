@@ -167,6 +167,12 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0x85: // add a, l
 		case 0x87: // add a, a
 			cpu->AF.left += *registerHexLookup[(opcode & 0x07)];
+			cpu->AF.flags.s = (cpu->AF.left < 0);
+			cpu->AF.flags.z = (cpu->AF.left == 0);
+			// cpu->AF.flags.h = (is set when carry from bit 3)
+			// cpu->AF.flags.pv = (is set if overflow)
+			cpu->AF.flags.n = 0;
+			// cpu->AF.flags.c = (is set if carry from bit 7)
 			break;
 		case 0xA8: // XOR B
 		case 0xA9: // XOR C
@@ -176,15 +182,27 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0xAD: // XOR L
 		case 0xAF: // XOR A
 			cpu->AF.left ^= *registerHexLookup[(opcode & 0x07)];
+			cpu->AF.flags.s = (cpu->AF.left < 0);
+			cpu->AF.flags.z = (cpu->AF.left == 0);
+			cpu->AF.flags.h = 0;
+			// cpu->AF.flags.pv = (is set if overflow)
+			cpu->AF.flags.n = 0;
+			cpu->AF.flags.c = 0;
 			break;
 		case 0xB0: // Or b
 		case 0xB1: // Or c
 		case 0xB2: // Or d
-		case 0xB3: // OR e
+		case 0xB3: // Or e
 		case 0xB4: // Or h
 		case 0xB5: // Or l
 		case 0xB7: // Or a
 			cpu->AF.left |= *registerHexLookup[(opcode & 0x07)];
+			cpu->AF.flags.s = (cpu->AF.left < 0);
+			cpu->AF.flags.z = (cpu->AF.left == 0);
+			cpu->AF.flags.h = 0;
+			// cpu->AF.flags.pv = (is set if overflow)
+			cpu->AF.flags.n = 0;
+			cpu->AF.flags.c = 0;
 			break;
 		case 0xC1: // pop bc
 		case 0xD1: // pop de
@@ -209,6 +227,12 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 			break;
 		case 0xC6: // add a, *
 			cpu->AF.left += memory[++cpu->pc];
+			cpu->AF.flags.s = (cpu->AF.left < 0);
+			cpu->AF.flags.z = (cpu->AF.left == 0);
+			// cpu->AF.flags.h = (is set if carry from bit 3)
+			// cpu->AF.flags.pv = (is set if overflow)
+			cpu->AF.flags.n = 0;
+			// cpu->AF.flags.c = (is set if carry from bit 7)
 			break;
 		case 0xC9: // ret
 			cpu->pc = memory[cpu->sp];
@@ -247,6 +271,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 					cpu->HL.pair++;
 					cpu->DE.pair++;
 					cpu->BC.pair--;
+
+					cpu->AF.flags.h = 0;
+					cpu->AF.flags.pv = 0;
+					cpu->AF.flags.n = 0;
 
 					// Repeat instruction if BC is not zero
 					if(cpu->BC.pair != 0) {

@@ -20,7 +20,7 @@ typedef union {
 			u8 c : 1;		// Carry.
 			u8 : 1;			// Not used.
 			u8 pv : 1;	// Parity / Overflow.
-			u8 : 1;			// Not used.
+			u8 n: 1;		// Add / Subtract.
 			u8 h : 1;		// Half carry.
 			u8 i : 1;		// Interrupt.
 			u8 z : 1;		// Zero.
