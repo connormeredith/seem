@@ -137,11 +137,14 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0x7F: // ld a, a
 			*registerHexLookup[((opcode & 0x38) >> 3)] = *registerHexLookup[(opcode & 0x07)];
 			break;
+		case 0x46: // ld b, (hl)
+		case 0x4E: // ld c, (hl)
 		case 0x56: // ld d, (hl)
-			cpu->DE.byte[1] = memory[cpu->HL.pair];
-			break;
 		case 0x5E: // ld e, (hl)
-			cpu->DE.byte[0] = memory[cpu->HL.pair];
+		case 0x66: // ld h, (hl)
+		case 0x6E: // ld l, (hl)
+		case 0x7E: // ld a, (hl)
+			*registerHexLookup[((opcode & 0x38) >> 3)] = memory[cpu->HL.pair];
 			break;
 		case 0x87: // add a, a
 			cpu->AF.left += cpu->AF.left;
