@@ -5,7 +5,8 @@
 #include "main.h"
 
 u8* registerHexLookup[8];
-u8* registerPairHexLookup[4][2];
+u16* registerPairHexLookup[4];
+u8* registerPairHexLookupSeparate[4][2];
 
 void init(Z80* cpu) {
 	registerHexLookup[0] = &cpu->BC.byte[1];
@@ -16,14 +17,19 @@ void init(Z80* cpu) {
 	registerHexLookup[5] = &cpu->HL.byte[0];
 	registerHexLookup[7] = &cpu->AF.left;
 
-	registerPairHexLookup[0][0] = &cpu->BC.byte[0];
-	registerPairHexLookup[0][1] = &cpu->BC.byte[1];
-	registerPairHexLookup[1][0] = &cpu->DE.byte[0];
-	registerPairHexLookup[1][1] = &cpu->DE.byte[1];
-	registerPairHexLookup[2][0] = &cpu->HL.byte[0];
-	registerPairHexLookup[2][1] = &cpu->HL.byte[1];
-	registerPairHexLookup[3][0] = &cpu->AF.flags.all;
-	registerPairHexLookup[3][1] = &cpu->AF.left;
+	registerPairHexLookup[0] = &cpu->BC.pair;
+	registerPairHexLookup[1] = &cpu->DE.pair;
+	registerPairHexLookup[2] = &cpu->HL.pair;
+	registerPairHexLookup[3] = &cpu->AF.pair;
+
+	registerPairHexLookupSeparate[0][0] = &cpu->BC.byte[0];
+	registerPairHexLookupSeparate[0][1] = &cpu->BC.byte[1];
+	registerPairHexLookupSeparate[1][0] = &cpu->DE.byte[0];
+	registerPairHexLookupSeparate[1][1] = &cpu->DE.byte[1];
+	registerPairHexLookupSeparate[2][0] = &cpu->HL.byte[0];
+	registerPairHexLookupSeparate[2][1] = &cpu->HL.byte[1];
+	registerPairHexLookupSeparate[3][0] = &cpu->AF.flags.all;
+	registerPairHexLookupSeparate[3][1] = &cpu->AF.left;
 }
 
 /**
@@ -48,14 +54,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 	u8 extendedOpcode;
 
 	switch(opcode) {
-		case 0x1: // ld bc, **
-			cpu->BC.byte[0] = memory[++cpu->pc];
-			cpu->BC.byte[1] = memory[++cpu->pc];
+		case 0x01: // ld bc, **
+		case 0x11: // ld de, **
+		case 0x21: // ld hl, **
+		// still need to do ld sp, **
+			*registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0] = memory[++cpu->pc];
+			*registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1] = memory[++cpu->pc];
 			break;
 		case 0x06:	// ld b, *
 		case 0x16:	// ld d, *
 		case 0x26:	// ld h, *
-		case 0x36:	// ld (hl), *
 		case 0x0E:	// ld c, *
 		case 0x1E:	// ld e, *
 		case 0x2E:	// ld l, *
@@ -71,16 +79,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 				cpu->pc++; // Skip the jump offset
 			}
 			break;
-		case 0x11: // ld de, **
-			cpu->DE.byte[0] = memory[++cpu->pc];
-			cpu->DE.byte[1] = memory[++cpu->pc];
-			break;
 		case 0x20: // jr nz, *
 
-			break;
-		case 0x21: // ld hl, **
-			cpu->HL.byte[0] = memory[++cpu->pc];
-			cpu->HL.byte[1] = memory[++cpu->pc];
 			break;
 		case 0x22: // ld **, hl
 			unsigned16Temp = memory[++cpu->pc];
@@ -181,8 +181,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0xD1: // pop de
 		case 0xE1: // pop hl
 		case 0xF1: // pop af
-			*registerPairHexLookup[((opcode & 0x30) >> 4)][0] = memory[cpu->sp];
-			*registerPairHexLookup[((opcode & 0x30) >> 4)][1] = memory[++cpu->sp];
+			*registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0] = memory[cpu->sp];
+			*registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1] = memory[++cpu->sp];
 			cpu->sp++;
 			break;
 		case 0xC3: // jp **
@@ -195,8 +195,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0xD5: // push de
 		case 0xE5: // push hl
 		case 0xF5: // push af
-			memory[--cpu->sp] = *registerPairHexLookup[((opcode & 0x30) >> 4)][1];
-			memory[--cpu->sp] = *registerPairHexLookup[((opcode & 0x30) >> 4)][0];
+			memory[--cpu->sp] = *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1];
+			memory[--cpu->sp] = *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0];
 			break;
 		case 0xC6: // add a, *
 			cpu->AF.left += memory[++cpu->pc];
