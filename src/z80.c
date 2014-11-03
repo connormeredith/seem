@@ -61,13 +61,19 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 			*registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0] = memory[++cpu->pc];
 			*registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1] = memory[++cpu->pc];
 			break;
-		case 0x06:	// ld b, *
-		case 0x16:	// ld d, *
-		case 0x26:	// ld h, *
-		case 0x0E:	// ld c, *
-		case 0x1E:	// ld e, *
-		case 0x2E:	// ld l, *
-		case 0x3E:	// ld a, *
+		case 0x03: // inc bc
+		case 0x13: // inc de
+		case 0x23: // inc hl
+		// still need to do inc sp
+			(*registerHexLookup[((opcode & 0x38) >> 3)])++;
+			break;
+		case 0x06: // ld b, *
+		case 0x16: // ld d, *
+		case 0x26: // ld h, *
+		case 0x0E: // ld c, *
+		case 0x1E: // ld e, *
+		case 0x2E: // ld l, *
+		case 0x3E: // ld a, *
 			*registerHexLookup[((opcode & 0x38) >> 3)] = memory[++cpu->pc];
 			break;
 		case 0x10: // djnz
@@ -87,9 +93,6 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 			unsigned16Temp += memory[++cpu->pc] << 8;
 			memory[unsigned16Temp] = cpu->HL.byte[1];
 			memory[++unsigned16Temp] = cpu->HL.byte[0];
-			break;
-		case 0x23: // inc hl
-			cpu->HL.pair++;
 			break;
 		case 0x32: // ld **, a
 			unsigned16Temp = memory[++cpu->pc];
