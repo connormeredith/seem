@@ -146,8 +146,14 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0x7E: // ld a, (hl)
 			*registerHexLookup[((opcode & 0x38) >> 3)] = memory[cpu->HL.pair];
 			break;
+		case 0x80: // add a, b
+		case 0x81: // add a, c
+		case 0x82: // add a, d
+		case 0x83: // add a, e
+		case 0x84: // add a, h
+		case 0x85: // add a, l
 		case 0x87: // add a, a
-			cpu->AF.left += cpu->AF.left;
+			cpu->AF.left += *registerHexLookup[(opcode & 0x07)];
 			break;
 		case 0xAF: // XOR A
 			cpu->AF.left = cpu->AF.left ^ cpu->AF.left;
