@@ -76,6 +76,12 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0x3E: // ld a, *
 			*registerHexLookup[((opcode & 0x38) >> 3)] = memory[++cpu->pc];
 			break;
+		case 0x0B: // dec bc
+		case 0x1B: // dec de
+		case 0x2B: // dec hl
+		// still need to do dec sp
+			(*registerHexLookup[((opcode & 0x38) >> 3)])--;
+			break;
 		case 0x10: // djnz
 			cpu->BC.byte[1]--;
 			if(cpu->BC.byte[1] != 0) {
