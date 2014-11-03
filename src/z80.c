@@ -192,8 +192,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 			--cpu->pc;
 			break;
 		case 0xC5: // push bc
-			memory[--cpu->sp] = cpu->BC.byte[1];
-			memory[--cpu->sp] = cpu->BC.byte[0];
+		case 0xD5: // push de
+		case 0xE5: // push hl
+		case 0xF5: // push af
+			memory[--cpu->sp] = *registerPairHexLookup[((opcode & 0x30) >> 4)][1];
+			memory[--cpu->sp] = *registerPairHexLookup[((opcode & 0x30) >> 4)][0];
 			break;
 		case 0xC6: // add a, *
 			cpu->AF.left += memory[++cpu->pc];
