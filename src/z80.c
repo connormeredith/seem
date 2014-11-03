@@ -105,6 +105,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 			memory[unsigned16Temp] = cpu->HL.byte[1];
 			memory[++unsigned16Temp] = cpu->HL.byte[0];
 			break;
+		case 0x2A: // ld hl, (**)
+			cpu->HL.byte[0] = memory[++cpu->pc];
+			cpu->HL.byte[1] = memory[++cpu->pc];
+			break;
 		case 0x32: // ld **, a
 			unsigned16Temp = memory[++cpu->pc];
 			unsigned16Temp += memory[++cpu->pc] << 8;
