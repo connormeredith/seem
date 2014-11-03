@@ -65,7 +65,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0x13: // inc de
 		case 0x23: // inc hl
 		// still need to do inc sp
-			(*registerHexLookup[((opcode & 0x38) >> 3)])++;
+			(*registerPairHexLookup[((opcode & 0x38) >> 3)])++;
 			break;
 		case 0x06: // ld b, *
 		case 0x16: // ld d, *
@@ -80,7 +80,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 		case 0x1B: // dec de
 		case 0x2B: // dec hl
 		// still need to do dec sp
-			(*registerHexLookup[((opcode & 0x38) >> 3)])--;
+			(*registerPairHexLookup[((opcode & 0x38) >> 3)])--;
 			break;
 		case 0x10: // djnz
 			cpu->BC.byte[1]--;
