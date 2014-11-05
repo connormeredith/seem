@@ -65,9 +65,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0x13: // inc de
     case 0x23: // inc hl
     // still need to do inc sp
-      printf("%x\n", cpu->HL.pair);
       (*registerPairHexLookup[((opcode & 0x30) >> 4)])++;
-      printf("%x\n", cpu->HL.pair);
       break;
     case 0x06: // ld b, *
     case 0x16: // ld d, *
@@ -82,9 +80,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0x19: // add hl, de
     case 0x29: // add hl, hl
     // still need to do add hl, sp
-      printf("%x\n", cpu->HL.pair);
       cpu->HL.pair += *registerPairHexLookup[((opcode & 0x30) >> 4)];
-      printf("%x\n", cpu->HL.pair);
       break;
     case 0x0B: // dec bc
     case 0x1B: // dec de
