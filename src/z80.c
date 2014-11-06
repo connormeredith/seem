@@ -318,7 +318,14 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           unsigned8Temp = memory[++cpu->pc];
           extendedOpcode = memory[++cpu->pc];
           switch(extendedOpcode) {
+            case 0x86: // res 0, (iy+*)
+            case 0x8E: // res 1, (iy+*)
+            case 0x96: // res 2, (iy+*)
+            case 0x9E: // res 3, (iy+*)
             case 0xA6: // res 4, (iy+*)
+            case 0xAE: // res 5, (iy+*)
+            case 0xB6: // res 6, (iy+*)
+            case 0xBE: // res 7, (iy+*)
               memory[(cpu->IY.pair + unsigned8Temp)] &= bitHexLookup[((extendedOpcode & 0x38) >> 3)];
               break;
             default:
