@@ -4,6 +4,7 @@
 #include "z80.h"
 #include "main.h"
 
+u8 bitHexLookup[8] = { 0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80 };
 u8* registerHexLookup[8];
 u16* registerPairHexLookup[4];
 u8* registerPairHexLookupSeparate[4][2];
@@ -51,6 +52,7 @@ u8 fetchOpcode(Z80* cpu, u8 memory[]) {
 void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
   u16 unsigned16Temp;
   s8 signed8Temp;
+  u8 unsigned8Temp;
   u8 extendedOpcode;
 
   switch(opcode) {
@@ -309,9 +311,35 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           exit(EXIT_FAILURE);
       }
       break;
+    case 0xFD: // IY instruction set
+      extendedOpcode = memory[++cpu->pc];
+      switch(extendedOpcode) {
+        case 0xCB: // IY bit instructions
+          unsigned8Temp = memory[++cpu->pc];
+          extendedOpcode = memory[++cpu->pc];
+          switch(extendedOpcode) {
+            case 0xA6: // res 4, (iy+*)
+              memory[(cpu->IY.pair + unsigned8Temp)] &= bitHexLookup[((extendedOpcode & 0x38) >> 3)];
+              break;
+            default:
+              printf("count -> 0x%x\n", cpu->pc);
+              fprintf(stderr, "Unknown IY bit opcode -> 0x%x\n", extendedOpcode);
+              exit(EXIT_FAILURE);
+          }
+          break;
+        default:
+          printf("count -> 0x%x\n", cpu->pc);
+          fprintf(stderr, "Unknown IY opcode -> 0x%x\n", extendedOpcode);
+          exit(EXIT_FAILURE);
+      }
+      break;
     default:
       printf("count -> 0x%x\n", cpu->pc);
       fprintf(stderr, "Unknown opcode -> 0x%x\n", opcode);
+      printf("BC->%x\n", cpu->BC.pair);
+      printf("DE->%x\n", cpu->DE.pair);
+      printf("HL->%x\n", cpu->HL.pair);
+      printf("AF->%x\n", cpu->AF.pair);
       exit(EXIT_FAILURE);
   }
 }
