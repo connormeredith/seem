@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "romLoader.h"
+#include "display.h"
 #include "main.h"
 #include "z80.h"
 
@@ -16,6 +17,7 @@ int main(int argc, char **argv) {
   } else {
     init(&CPU);
     loadRom(argv[1], &CPU, RAM); // Load ROM from file into memory
+    initDisplay();
     executeOpcode(&CPU, RAM, RAM[CPU.pc]);
     for(;;) {
       u8 opcode = fetchOpcode(&CPU, RAM);
