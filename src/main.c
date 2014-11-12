@@ -17,7 +17,8 @@ int main(int argc, char **argv) {
   } else {
     init(&CPU);
     loadRom(argv[1], &CPU, RAM); // Load ROM from file into memory
-    initDisplay();
+    initDisplay(RAM);
+    // printRAM();
     executeOpcode(&CPU, RAM, RAM[CPU.pc]);
     for(;;) {
       u8 opcode = fetchOpcode(&CPU, RAM);
