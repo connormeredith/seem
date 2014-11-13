@@ -6,22 +6,36 @@
 const int WIDTH = 256;
 const int HEIGHT = 192;
 
-void initDisplay(u8 memory[]) {
-  SDL_Window* window;
-  SDL_Surface* surface;
+// Screen vars.
+SDL_Window* window;
 
+// Converts the 3 color bits of an attribute byte into hex depending on their value.
+static int spectrumColor[8] = { 0x00, 0xFF, 0xFF0000, 0xFF00FF, 0xFF00, 0xFFFF, 0xFFFF00, 0xFFFFFF };
+
+/**
+ * Initialises the display window.
+ * @param memory The ZX Spectrum's memory array.
+ */
+void initDisplay(u8 memory[]) {
   SDL_Init(SDL_INIT_VIDEO);
   window = SDL_CreateWindow("SEEM", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
-  surface = SDL_GetWindowSurface(window);
 
-  draw(memory, surface);
+  render(memory, window);
 
-  SDL_UpdateWindowSurface(window);
   SDL_Delay(10000);
 }
 
-void draw(u8 memory[], SDL_Surface* surface) {
+/**
+ * Renders the screen from video memory (0x4000 - 0x51AA).
+ * @param memory  The ZX Spectrum's memory array.
+ * @param surface A pointer to the window's surface struct.
+ */
+void render(u8 memory[], SDL_Window* window) {
+	SDL_Surface* surface = SDL_GetWindowSurface(window);
+	SDL_LockSurface(surface);
+
 	unsigned int *ptr = (unsigned int*)surface->pixels;
+
 	u8 actualRow, displayByte, attributeByte, currentPixelBit;
 	int rowPointer;
 	u8 offset = 0;
@@ -38,35 +52,21 @@ void draw(u8 memory[], SDL_Surface* surface) {
 			attributeByte = memory[0x5800 + ((actualRow >> 3) << 5) + (hCount >> 3)];
 			currentPixelBit = 7 - (hCount % 8);
 
-			ptr[rowPointer + hCount] = generateColor(attributeByte, (displayByte & (1 << currentPixelBit)));
+			ptr[rowPointer + hCount] = pixelColor(attributeByte, (displayByte & (1 << currentPixelBit)));
 		}
 	}
+
+	SDL_UnlockSurface(surface);
+	SDL_UpdateWindowSurface(window);
 }
 
-int generateColor(u8 attributeByte, u8 isForeground) {
-	int color = 0x0;
-
-	if(isForeground) {
-		if(attributeByte & (1 << 0)) {
-			color += 0xFF;
-		}
-		if(attributeByte & (1 << 1)) {
-			color += 0xFF0000;
-		}
-		if(attributeByte & (1 << 2)) {
-			color += 0xFF00;
-		}
-	} else {
-		if(attributeByte & (1 << 3)) {
-			color += 0xFF;
-		}
-		if(attributeByte & (1 << 4)) {
-			color += 0xFF0000;
-		}
-		if(attributeByte & (1 << 5)) {
-			color += 0xFF00;
-		}
-	}
-
-	return color;
+/**
+ * Returns the color of an individual pixel.
+ * @param  attributeByte The attribute for the pixel's character block.
+ * @param  isForeground  Whether or not the pixel is to use the foreground or background color.
+ * @return               The color of the pixel in hex.
+ */
+int pixelColor(u8 attributeByte, u8 isForeground) {
+	u8 colorByte = (isForeground) ? (attributeByte & 0x7) : ((attributeByte & 0x38) >> 3);
+	return spectrumColor[colorByte];
 }

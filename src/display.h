@@ -2,5 +2,5 @@
 #include "z80.h"
 
 void initDisplay(u8 memory[]);
-void draw(u8 memory[], SDL_Surface* surface);
-int generateColor(u8 attributeByte, u8 isForeground);
+void render(u8 memory[], SDL_Window* window);
+int pixelColor(u8 attributeByte, u8 isForeground);
