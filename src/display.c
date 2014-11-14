@@ -9,9 +9,6 @@ const int HEIGHT = 192;
 // Screen vars.
 SDL_Window* window;
 
-// Converts the 3 color bits of an attribute byte into hex depending on their value.
-static int spectrumColor[8] = { 0x00, 0xFF, 0xFF0000, 0xFF00FF, 0xFF00, 0xFFFF, 0xFFFF00, 0xFFFFFF };
-
 /**
  * Initialises the display window.
  * @param memory The ZX Spectrum's memory array.
@@ -67,6 +64,9 @@ void render(u8 memory[], SDL_Window* window) {
  * @return               The color of the pixel in hex.
  */
 int pixelColor(u8 attributeByte, u8 isForeground) {
+	// Converts the 3 color bits of an attribute byte into hex depending on their value.
+	static int spectrumColor[8] = { 0x00, 0xFF, 0xFF0000, 0xFF00FF, 0xFF00, 0xFFFF, 0xFFFF00, 0xFFFFFF };
+	
 	u8 colorByte = (isForeground) ? (attributeByte & 0x7) : ((attributeByte & 0x38) >> 3);
 	return spectrumColor[colorByte];
 }
