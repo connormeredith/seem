@@ -1,6 +1,5 @@
 Spectrum Emulator for Embedded Machines (SEEM)
 ===
-***
 The aim of this project is to produce a ZX Spectrum emulator that is able to run across multiple Arduinos, distributing processing serially between each board.
 
 (It can also be compiled to run on Windows, Mac and Linux.)
