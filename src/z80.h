@@ -40,6 +40,7 @@ typedef struct {
   RegisterPair BC, _BC, DE, _DE, HL, _HL, IX, _IX, IY, _IY;
   u16 sp, pc;
   u8 I, R;
+  int currentTstate;
 } Z80;
 
 void init(Z80* cpu);

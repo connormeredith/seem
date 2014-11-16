@@ -97,6 +97,11 @@ void _loadAdditionalHeaderContents(FILE* fp, Z80* cpu) {
     exit(EXIT_FAILURE);
   }
   cpu->pc = _getNextWord(fp);
+
+  // Load current Tstate
+  fseek(fp, 55, SEEK_SET);
+  int lowTstate = (_getNextWord(fp) + 1);
+  cpu->currentTstate = (((_getNextByte(fp) + 1) % 4) + 1) * 17472 - lowTstate;
 }
 
 void _loadMemoryBlocks(FILE* fp, u8 memory[]) {

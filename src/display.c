@@ -17,9 +17,9 @@ void initDisplay(u8 memory[]) {
   SDL_Init(SDL_INIT_VIDEO);
   window = SDL_CreateWindow("SEEM", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
 
-  render(memory, window);
+  render(memory);
 
-  SDL_Delay(10000);
+  // SDL_Delay(10000);
 }
 
 /**
@@ -27,7 +27,7 @@ void initDisplay(u8 memory[]) {
  * @param memory  The ZX Spectrum's memory array.
  * @param surface A pointer to the window's surface struct.
  */
-void render(u8 memory[], SDL_Window* window) {
+void render(u8 memory[]) {
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 	SDL_LockSurface(surface);
 
@@ -55,6 +55,7 @@ void render(u8 memory[], SDL_Window* window) {
 
 	SDL_UnlockSurface(surface);
 	SDL_UpdateWindowSurface(window);
+	SDL_Delay(100);
 }
 
 /**
@@ -66,7 +67,7 @@ void render(u8 memory[], SDL_Window* window) {
 int pixelColor(u8 attributeByte, u8 isForeground) {
 	// Converts the 3 color bits of an attribute byte into hex depending on their value.
 	static int spectrumColor[8] = { 0x00, 0xFF, 0xFF0000, 0xFF00FF, 0xFF00, 0xFFFF, 0xFFFF00, 0xFFFFFF };
-	
+
 	u8 colorByte = (isForeground) ? (attributeByte & 0x7) : ((attributeByte & 0x38) >> 3);
 	return spectrumColor[colorByte];
 }

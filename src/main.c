@@ -9,6 +9,11 @@
 Z80 CPU;
 u8 RAM[0xFFFF] = { 0x00 };
 
+/**
+ * Main function.
+ *
+ * Arguments: ./emulator [path to .Z80 file].
+ */
 int main(int argc, char **argv) {
   if(argc != 2) {
     printf("Missing rom.\n");
@@ -21,6 +26,11 @@ int main(int argc, char **argv) {
     // printRAM();
     executeOpcode(&CPU, RAM, RAM[CPU.pc]);
     for(;;) {
+      if(CPU.currentTstate >= 69888) {
+        CPU.currentTstate %= 69888;
+        printf("REDRAW: Tstate=%i\n", CPU.currentTstate);
+        render(RAM);
+      }
       u8 opcode = fetchOpcode(&CPU, RAM);
       executeOpcode(&CPU, RAM, opcode);
     }
