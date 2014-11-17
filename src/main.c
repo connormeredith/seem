@@ -22,15 +22,18 @@ int main(int argc, char **argv) {
   } else {
     init(&CPU);
     loadRom(argv[1], &CPU, RAM); // Load ROM from file into memory
-    initDisplay(RAM);
+    // initDisplay(RAM);
     // printRAM();
     executeOpcode(&CPU, RAM, RAM[CPU.pc]);
     for(;;) {
-      if(CPU.currentTstate >= 69888) {
-        CPU.currentTstate %= 69888;
-        printf("REDRAW: Tstate=%i\n", CPU.currentTstate);
-        render(RAM);
-      }
+      // if(CPU.currentTstate >= 69888) {
+      //   CPU.currentTstate %= 69888;
+      //   printf("REDRAW: Tstate=%i\n", CPU.currentTstate);
+      //   render(RAM);
+      // }
+      // if(CPU.AF.byte.flags.z != 0) {
+      //   printf("PC=%x - OP=%x\n", CPU.pc, RAM[CPU.pc]);
+      // }
       u8 opcode = fetchOpcode(&CPU, RAM);
       executeOpcode(&CPU, RAM, opcode);
     }

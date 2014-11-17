@@ -19,7 +19,7 @@ typedef union {
     union {
       struct {
         u8 c : 1;   // Carry.
-        u8 : 1;     // Not used.
+        u8 unused: 1;     // Not used.
         u8 pv : 1;  // Parity / Overflow.
         u8 n: 1;    // Add / Subtract.
         u8 h : 1;   // Half carry.
