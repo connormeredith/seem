@@ -453,6 +453,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->pc--;
       cpu->currentTstate += 4;
       break;
+    case 0xEB: // ex de, HL
+      unsigned16Temp = cpu->DE.pair;
+      cpu->DE.pair = cpu->HL.pair;
+      cpu->HL.pair = unsigned16Temp;
+      break;
     case 0xED: // Extended instruction set
       extendedOpcode = memory[++cpu->pc];
       switch(extendedOpcode) {
