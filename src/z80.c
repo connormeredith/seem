@@ -266,6 +266,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->AF.byte.flags.c = 0;
       cpu->currentTstate += 4;
       break;
+    case 0xAE: // XOR (hl)
+      cpu->AF.byte.left ^= memory[cpu->HL.pair];
+      cpu->AF.byte.flags.s = (cpu->AF.byte.left < 0);
+      cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
+      cpu->AF.byte.flags.h = 0;
+      // cpu->AF.flags.pv = (is set if overflow)
+      cpu->AF.byte.flags.n = 0;
+      cpu->AF.byte.flags.c = 0;
+      cpu->currentTstate += 7;
+      break;
     case 0xB0: // Or b
     case 0xB1: // Or c
     case 0xB2: // Or d
