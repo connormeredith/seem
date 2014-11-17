@@ -5,6 +5,7 @@
 #include "main.h"
 
 u8 bitHexLookup[8] = { 0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80 };
+u8 rstHexLookup[8] = { 0x0, 0x8, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38 };
 u8* registerHexLookup[8];
 u16* registerPairHexLookup[4];
 u8* registerPairHexLookupSeparate[4][2];
@@ -349,6 +350,20 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->AF.byte.flags.n = 0;
       // cpu->AF.flags.c = (is set if carry from bit 7)
       cpu->currentTstate += 7;
+      break;
+    case 0xC7: // rst 00h
+    case 0xCF: // rst 08h
+    case 0xD7: // rst 10h
+    case 0xDF: // rst 18h
+    case 0xE7: // rst 20h
+    case 0xEF: // rst 28h
+    case 0xF7: // rst 30h
+    case 0xFF: // rst 38h
+      memory[--cpu->sp] = cpu->pc >> 8;
+      memory[--cpu->sp] = cpu->pc;
+      cpu->pc = rstHexLookup[(opcode & 0x38) >> 3];
+      cpu->pc--;
+      cpu->currentTstate += 11;
       break;
     case 0xC8: // ret z
       if(cpu->AF.byte.flags.z) {
