@@ -399,6 +399,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           exit(EXIT_FAILURE);
       }
       break;
+    case 0xE6: // and *
+      cpu->AF.byte.left &= memory[++cpu->pc];
+      cpu->AF.byte.flags.s = (cpu->AF.byte.left < 0);
+      cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
+      cpu->AF.byte.flags.h = 1;
+      // cpu->AF.flags.pv = (is set if overflow)
+      cpu->AF.byte.flags.n = 0;
+      cpu->AF.byte.flags.c = 0;
+      cpu->currentTstate += 7;
+      break;
     case 0xE9: // jp (hl)
       cpu->pc = cpu->HL.pair;
       cpu->pc--;
