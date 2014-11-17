@@ -95,6 +95,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       (*registerPairHexLookup[((opcode & 0x30) >> 4)])--;
       cpu->currentTstate += 6;
       break;
+    case 0x0F: // rrca
+      cpu->AF.byte.flags.c = cpu->AF.byte.left & 0x1;
+      cpu->AF.byte.left >>= 1;
+      cpu->AF.byte.left += (cpu->AF.byte.flags.c << 7);
+      break;
     case 0x10: // djnz
       cpu->BC.byte[1]--;
       if(cpu->BC.byte[1] != 0) {
