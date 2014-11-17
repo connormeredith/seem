@@ -99,6 +99,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->AF.byte.flags.c = cpu->AF.byte.left & 0x1;
       cpu->AF.byte.left >>= 1;
       cpu->AF.byte.left += (cpu->AF.byte.flags.c << 7);
+      cpu->currentTstate += 4;
       break;
     case 0x10: // djnz
       cpu->BC.byte[1]--;
@@ -155,6 +156,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->AF.byte.flags.n = 0;
       cpu->AF.byte.flags.h = 0;
       cpu->AF.byte.flags.c = 1;
+      cpu->currentTstate += 4;
       break;
     case 0x40: // ld b, b
     case 0x41: // ld b, c
@@ -216,6 +218,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0x6E: // ld l, (hl)
     case 0x7E: // ld a, (hl)
       *registerHexLookup[((opcode & 0x38) >> 3)] = memory[cpu->HL.pair];
+      cpu->currentTstate += 7;
+      break;
+    case 0x77: // ld (hl), a
+      memory[cpu->HL.pair] = cpu->AF.byte.left;
       cpu->currentTstate += 7;
       break;
     case 0x80: // add a, b
@@ -388,6 +394,12 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xDD: // IX instruction set
       extendedOpcode = memory[++cpu->pc];
       switch(extendedOpcode) {
+        case 0xE1: // pop IX
+          cpu->IX.byte[0] = memory[cpu->sp];
+          cpu->IX.byte[1] = memory[++cpu->sp];
+          cpu->sp++;
+          cpu->currentTstate += 14;
+          break;
         case 0xE5: // push IX
           memory[--cpu->sp] = cpu->IX.byte[1];
           memory[--cpu->sp] = cpu->IX.byte[0];
