@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
       //   printf("REDRAW: Tstate=%i\n", CPU.currentTstate);
       //   render(RAM);
       // }
-      // if(CPU.AF.byte.flags.z != 0) {
+      // if(RAM[0x5c3c] == 1) {
       //   printf("PC=%x - OP=%x\n", CPU.pc, RAM[CPU.pc]);
       // }
       u8 opcode = fetchOpcode(&CPU, RAM);
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
 
 void printRAM() {
   printf("RAM:\n");
-  for (u16 i = 0x4000; i <= 0x7fff; i++) {
+  for (u16 i = 0x5c30; i <= 0x5c3F; i++) {
     printf("-------------------------\n");
     printf("0x%x -> 0x%x\n", i, RAM[i]);
   }

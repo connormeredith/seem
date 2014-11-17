@@ -123,6 +123,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       memory[++unsigned16Temp] = cpu->HL.byte[1];
       cpu->currentTstate += 16;
       break;
+    case 0x28: // jr z, *
+      if(cpu->AF.byte.flags.z == 1) {
+        signed8Temp = memory[++cpu->pc];
+        cpu->pc+=signed8Temp; // Requires signed addition
+        cpu->currentTstate += 12;
+      } else {
+        cpu->pc++; // Skip the jump offset
+        cpu->currentTstate += 7;
+      }
+      break;
     case 0x2A: // ld hl, (**)
       unsigned16Temp = memory[++cpu->pc];
       unsigned16Temp += memory[++cpu->pc] << 8;
@@ -413,6 +423,17 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           unsigned8Temp = memory[++cpu->pc];
           extendedOpcode = memory[++cpu->pc];
           switch(extendedOpcode) {
+            case 0x46: // bit 0, (iy**)
+            case 0x4E: // bit 1, (iy**)
+            case 0x56: // bit 2, (iy**)
+            case 0x5E: // bit 3, (iy**)
+            case 0x66: // bit 4, (iy**)
+            case 0x6E: // bit 5, (iy**)
+            case 0x76: // bit 6, (iy**)
+            case 0x7E: // bit 7, (iy**)
+              cpu->AF.byte.flags.z = (memory[(cpu->IY.pair + unsigned8Temp)] & bitHexLookup[((extendedOpcode & 0x38) >> 3)]) ? 0 : 1;
+              cpu->currentTstate += 20;
+              break;
             case 0x86: // res 0, (iy+*)
             case 0x8E: // res 1, (iy+*)
             case 0x96: // res 2, (iy+*)
@@ -421,7 +442,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
             case 0xAE: // res 5, (iy+*)
             case 0xB6: // res 6, (iy+*)
             case 0xBE: // res 7, (iy+*)
-              memory[(cpu->IY.pair + unsigned8Temp)] &= bitHexLookup[((extendedOpcode & 0x38) >> 3)];
+              memory[(cpu->IY.pair + unsigned8Temp)] &= ~(bitHexLookup[((extendedOpcode & 0x38) >> 3)]);
               cpu->currentTstate += 23;
               break;
             default:
