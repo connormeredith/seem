@@ -56,6 +56,18 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
   u8 unsigned8Temp;
   u8 extendedOpcode;
 
+  // if(cpu->pc == 0xB14) {
+  //   printf("count -> 0x%x\n", cpu->pc);
+  //   fprintf(stderr, "Unknown opcode -> 0x%x\n", opcode);
+  //   printf("BC->%x\n", cpu->BC.pair);
+  //   printf("DE->%x\n", cpu->DE.pair);
+  //   printf("HL->%x\n", cpu->HL.pair);
+  //   printf("A->%x\n", cpu->AF.byte.left);
+  //   printf("F->%x\n", cpu->AF.byte.flags.all);
+  //   printf("FZ->%x\n", cpu->AF.byte.flags.z);
+  //   // exit(EXIT_FAILURE);
+  // }
+
   switch(opcode) {
     case 0x01: // ld bc, **
     case 0x11: // ld de, **
@@ -232,6 +244,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0x84: // add a, h
     case 0x85: // add a, l
     case 0x87: // add a, a
+      cpu->AF.byte.flags.c = ((cpu->AF.byte.left + *registerHexLookup[(opcode & 0x07)]) < cpu->AF.byte.left);
       cpu->AF.byte.left += *registerHexLookup[(opcode & 0x07)];
       cpu->AF.byte.flags.s = (cpu->AF.byte.left < 0);
       cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
@@ -308,6 +321,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xBF: // cp a
       // printf("A->%x\n", cpu->AF.byte.left);
       // printf("C->%x\n", cpu->BC.pair);
+      cpu->AF.byte.flags.c = ((cpu->AF.byte.left - *registerHexLookup[(opcode & 0x07)]) < cpu->AF.byte.left);
       cpu->AF.byte.flags.s = ((cpu->AF.byte.left - *registerHexLookup[(opcode & 0x07)]) < 0);
       cpu->AF.byte.flags.z = ((cpu->AF.byte.left - *registerHexLookup[(opcode & 0x07)]) == 0);
       // cpu->AF.byte.flags.h = 0; (is set if borrow from bit 4 otherwise reset)
@@ -371,6 +385,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         unsigned16Temp = memory[++cpu->sp] << 8;
         cpu->pc += unsigned16Temp;
         cpu->sp++;
+        --cpu->pc;
         cpu->currentTstate += 11;
       } else {
         cpu->currentTstate += 5;
@@ -457,10 +472,18 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       unsigned16Temp = cpu->DE.pair;
       cpu->DE.pair = cpu->HL.pair;
       cpu->HL.pair = unsigned16Temp;
+      cpu->currentTstate += 4;
       break;
     case 0xED: // Extended instruction set
       extendedOpcode = memory[++cpu->pc];
       switch(extendedOpcode) {
+        case 0x4B: // ld bc, (**)
+          unsigned16Temp = memory[++cpu->pc];
+          unsigned16Temp += memory[++cpu->pc] << 8;
+          cpu->BC.byte[0] = memory[unsigned16Temp];
+          cpu->BC.byte[1] = memory[unsigned16Temp + 1];
+          cpu->currentTstate += 20;
+          break;
         case 0xB0: // ldir
           memory[cpu->DE.pair] = memory[cpu->HL.pair];
           cpu->HL.pair++;
@@ -525,6 +548,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           fprintf(stderr, "Unknown IY opcode -> 0x%x\n", extendedOpcode);
           exit(EXIT_FAILURE);
       }
+      break;
+    case 0xFE: // cp n
+      cpu->AF.byte.flags.c = ((cpu->AF.byte.left - memory[++cpu->pc]) < cpu->AF.byte.left);
+      cpu->AF.byte.flags.s = ((cpu->AF.byte.left - memory[cpu->pc]) < 0);
+      cpu->AF.byte.flags.z = ((cpu->AF.byte.left - memory[cpu->pc]) == 0);
+      // cpu->AF.byte.flags.h = 0; (is set if borrow from bit 4 otherwise reset)
+      // cpu->AF.flags.pv = (is set if overflow)
+      cpu->AF.byte.flags.n = 1;
+      cpu->currentTstate += 4;
+
       break;
     default:
       printf("count -> 0x%x\n", cpu->pc);
