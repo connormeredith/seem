@@ -159,6 +159,17 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->HL.byte[1] = memory[unsigned16Temp + 1];
       cpu->currentTstate += 16;
       break;
+    case 0x30: // jr nc
+      if(cpu->AF.byte.flags.c == 0) {
+        unsigned8Temp = memory[cpu->pc + 1];
+        cpu->pc += unsigned8Temp;
+        cpu->pc--;
+        cpu->currentTstate += 12;
+      } else {
+        cpu->pc++;
+        cpu->currentTstate += 7;
+      }
+      break;
     case 0x32: // ld **, a
       unsigned16Temp = memory[++cpu->pc];
       unsigned16Temp += memory[++cpu->pc] << 8;
@@ -170,6 +181,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->AF.byte.flags.h = 0;
       cpu->AF.byte.flags.c = 1;
       cpu->currentTstate += 4;
+      break;
+    case 0x38: // jr c
+      if(cpu->AF.byte.flags.c == 1) {
+        cpu->pc += memory[++cpu->pc];
+        cpu->pc--;
+        cpu->currentTstate += 12;
+      } else {
+        cpu->pc++;
+        cpu->currentTstate += 7;
+      }
       break;
     case 0x40: // ld b, b
     case 0x41: // ld b, c
@@ -421,6 +442,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         cpu->currentTstate += 5;
       }
       break;
+    case 0xD2: // jp nc
+      if(cpu->AF.byte.flags.c == 0) {
+        unsigned16Temp = memory[++cpu->pc];
+        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->currentTstate += 12;
+      } else {
+        cpu->pc += 2;
+        cpu->currentTstate += 7;
+      }
+      break;
     case 0xD9: // exx
       unsigned16Temp = cpu->BC.pair;
       cpu->BC.pair = cpu->_BC.pair;
@@ -550,14 +581,14 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0xFE: // cp n
-      cpu->AF.byte.flags.c = ((cpu->AF.byte.left - memory[++cpu->pc]) < cpu->AF.byte.left);
+      unsigned8Temp = cpu->AF.byte.left - memory[++cpu->pc];
+      cpu->AF.byte.flags.c = (unsigned8Temp > cpu->AF.byte.left);
       cpu->AF.byte.flags.s = ((cpu->AF.byte.left - memory[cpu->pc]) < 0);
       cpu->AF.byte.flags.z = ((cpu->AF.byte.left - memory[cpu->pc]) == 0);
       // cpu->AF.byte.flags.h = 0; (is set if borrow from bit 4 otherwise reset)
       // cpu->AF.flags.pv = (is set if overflow)
       cpu->AF.byte.flags.n = 1;
-      cpu->currentTstate += 4;
-
+      cpu->currentTstate += 7;
       break;
     default:
       printf("count -> 0x%x\n", cpu->pc);
@@ -567,6 +598,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       printf("HL->%x\n", cpu->HL.pair);
       printf("A->%x\n", cpu->AF.byte.left);
       printf("F->%x\n", cpu->AF.byte.flags.all);
+      printf("Zero->%x\n", cpu->AF.byte.flags.z);
+      printf("Carry->%x\n", cpu->AF.byte.flags.c);
       exit(EXIT_FAILURE);
   }
 }
