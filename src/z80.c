@@ -600,6 +600,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           exit(EXIT_FAILURE);
       }
       break;
+    case 0xF6: // or n
+      cpu->AF.byte.left |= memory[++cpu->pc];
+      cpu->AF.byte.flags.s = (cpu->AF.byte.left < 0);
+      cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
+      cpu->AF.byte.flags.h = 0;
+      // cpu->AF.flags.pv = (is set if overflow)
+      cpu->AF.byte.flags.n = 0;
+      cpu->AF.byte.flags.c = 0;
+      cpu->currentTstate += 7;
+      break;
     case 0xFD: // IY instruction set
       extendedOpcode = memory[++cpu->pc];
       switch(extendedOpcode) {
