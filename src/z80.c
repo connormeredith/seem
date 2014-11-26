@@ -125,6 +125,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         cpu->currentTstate += 8;
       }
       break;
+    case 0x18: // jr *
+      unsigned8Temp = memory[++cpu->pc];
+      cpu->pc += unsigned8Temp;
+      cpu->currentTstate += 12;
+      break;
     case 0x20: // jr nz, *
       if(cpu->AF.byte.flags.z == 0) {
         signed8Temp = memory[++cpu->pc];
@@ -254,8 +259,14 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       *registerHexLookup[((opcode & 0x38) >> 3)] = memory[cpu->HL.pair];
       cpu->currentTstate += 7;
       break;
+    case 0x70: // ld (hl), b
+    case 0x71: // ld (hl), c
+    case 0x72: // ld (hl), d
+    case 0x73: // ld (hl), e
+    case 0x74: // ld (hl), h
+    case 0x75: // ld (hl), l
     case 0x77: // ld (hl), a
-      memory[cpu->HL.pair] = cpu->AF.byte.left;
+      memory[cpu->HL.pair] = *registerHexLookup[(opcode & 0x07)];
       cpu->currentTstate += 7;
       break;
     case 0x80: // add a, b
@@ -394,7 +405,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xEF: // rst 28h
     case 0xF7: // rst 30h
     case 0xFF: // rst 38h
-      memory[--cpu->sp] = cpu->pc >> 8;
+      memory[--cpu->sp] = ++cpu->pc >> 8;
       memory[--cpu->sp] = cpu->pc;
       cpu->pc = rstHexLookup[(opcode & 0x38) >> 3];
       cpu->pc--;
