@@ -98,6 +98,20 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->AF.byte.flags.s = ((*registerHexLookup[((opcode & 0x38) >> 3)]) < 0);
       cpu->AF.byte.flags.z = ((*registerHexLookup[((opcode & 0x38) >> 3)]) == 0);
       cpu->AF.byte.flags.n = 0;
+      cpu->currentTstate += 4;
+      break;
+    case 0x05: // dec b
+    case 0x0D: // dec c
+    case 0x15: // dec d
+    case 0x1D: // dec e
+    case 0x25: // dec h
+    case 0x2D: // dec l
+    case 0x3D: // dec a
+      (*registerHexLookup[((opcode & 0x38) >> 3)])--;
+      cpu->AF.byte.flags.s = ((*registerHexLookup[((opcode & 0x38) >> 3)]) < 0);
+      cpu->AF.byte.flags.z = ((*registerHexLookup[((opcode & 0x38) >> 3)]) == 0);
+      cpu->AF.byte.flags.n = 1;
+      cpu->currentTstate += 4;
       break;
     case 0x06: // ld b, *
     case 0x16: // ld d, *
