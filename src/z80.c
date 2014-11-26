@@ -56,6 +56,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
   u8 unsigned8Temp;
   u8 extendedOpcode;
 
+  printf("PC::%x\n", cpu->pc);
+
   // if(cpu->pc == 0xB14) {
   //   printf("count -> 0x%x\n", cpu->pc);
   //   fprintf(stderr, "Unknown opcode -> 0x%x\n", opcode);
@@ -283,7 +285,22 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       // cpu->AF.flags.h = (is set when carry from bit 3)
       // cpu->AF.flags.pv = (is set if overflow)
       cpu->AF.byte.flags.n = 0;
-      // cpu->AF.flags.c = (is set if carry from bit 7)
+      cpu->currentTstate += 4;
+      break;
+    case 0x90: // sub a, b
+    case 0x91: // sub a, c
+    case 0x92: // sub a, d
+    case 0x93: // sub a, e
+    case 0x94: // sub a, h
+    case 0x95: // sub a, l
+    case 0x97: // sub a, a
+      cpu->AF.byte.flags.c = ((cpu->AF.byte.left - *registerHexLookup[(opcode & 0x07)]) > cpu->AF.byte.left);
+      cpu->AF.byte.left -= *registerHexLookup[(opcode & 0x07)];
+      cpu->AF.byte.flags.s = (cpu->AF.byte.left < 0);
+      cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
+      // cpu->AF.flags.h = (is set when carry from bit 3)
+      // cpu->AF.flags.pv = (is set if overflow)
+      cpu->AF.byte.flags.n = 0;
       cpu->currentTstate += 4;
       break;
     case 0xA0: // AND b
@@ -475,6 +492,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->_HL.pair = unsigned16Temp;
       cpu->currentTstate += 4;
       break;
+    case 0xDA: // jp c
+      if(cpu->AF.byte.flags.c == 1) {
+        unsigned16Temp = memory[++cpu->pc];
+        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->currentTstate += 12;
+      } else {
+        cpu->pc += 2;
+        cpu->currentTstate += 7;
+      }
+      break;
     case 0xDD: // IX instruction set
       extendedOpcode = memory[++cpu->pc];
       switch(extendedOpcode) {
@@ -611,6 +638,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       printf("F->%x\n", cpu->AF.byte.flags.all);
       printf("Zero->%x\n", cpu->AF.byte.flags.z);
       printf("Carry->%x\n", cpu->AF.byte.flags.c);
+      printf("Tstate->%i\n", cpu->currentTstate);
       exit(EXIT_FAILURE);
   }
 }

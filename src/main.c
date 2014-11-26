@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
       // if(RAM[0x5c3c] == 1) {
       //   printf("PC=%x - OP=%x\n", CPU.pc, RAM[CPU.pc]);
       // }
+      CPU.currentTstate %= 69888;
       u8 opcode = fetchOpcode(&CPU, RAM);
       executeOpcode(&CPU, RAM, opcode);
     }
