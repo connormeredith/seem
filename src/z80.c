@@ -610,6 +610,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       if(cpu->AF.byte.flags.c == 1) {
         unsigned16Temp = memory[++cpu->pc];
         cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->pc--;
         cpu->currentTstate += 12;
       } else {
         cpu->pc += 2;
