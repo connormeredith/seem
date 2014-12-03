@@ -58,7 +58,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
   u8 unsigned8Temp;
   u8 extendedOpcode;
 
-  printf("PC::%x\n", cpu->pc);
+  printf("PC::%x - OP::%x\n", cpu->pc, opcode);
 
   switch(opcode) {
     case 0x01: // ld bc, **
@@ -154,8 +154,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->currentTstate += 7;
       break;
     case 0x18: // jr *
-      unsigned8Temp = memory[++cpu->pc];
-      cpu->pc += unsigned8Temp;
+      signed8Temp = memory[++cpu->pc];
+      cpu->pc += signed8Temp;
       cpu->currentTstate += 12;
       break;
     case 0x1A: // ld a, (de)
@@ -545,6 +545,15 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         default:
           printf("count -> 0x%x\n", cpu->pc);
           fprintf(stderr, "Unknown BIT opcode -> 0x%x\n", extendedOpcode);
+          printf("BC->%x\n", cpu->BC.pair);
+          printf("DE->%x\n", cpu->DE.pair);
+          printf("HL->%x\n", cpu->HL.pair);
+          printf("A->%x\n", cpu->AF.byte.left);
+          printf("F->%x\n", cpu->AF.byte.flags.all);
+          printf("Zero->%x\n", cpu->AF.byte.flags.z);
+          printf("Carry->%x\n", cpu->AF.byte.flags.c);
+          printf("Tstate->%i\n", cpu->currentTstate);
+          sleep(10000);
           exit(EXIT_FAILURE);
       }
       break;
@@ -620,6 +629,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         default:
           printf("count -> 0x%x\n", cpu->pc);
           fprintf(stderr, "Unknown IX opcode -> 0x%x\n", extendedOpcode);
+          sleep(10000);
           exit(EXIT_FAILURE);
       }
       break;
@@ -659,9 +669,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         case 0x6B: // ld hl, (**)
           unsigned16Temp = memory[++cpu->pc];
           unsigned16Temp += memory[++cpu->pc] << 8;
-          *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0] = memory[unsigned16Temp];
-          *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1] = memory[unsigned16Temp + 1];
-          printf("BC->%x\n", cpu->DE.pair);
+          *registerPairHexLookupSeparate[((extendedOpcode & 0x30) >> 4)][0] = memory[unsigned16Temp];
+          *registerPairHexLookupSeparate[((extendedOpcode & 0x30) >> 4)][1] = memory[unsigned16Temp + 1];
           cpu->currentTstate += 20;
           break;
         case 0xB0: // ldir
@@ -685,6 +694,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         default:
           printf("count -> 0x%x\n", cpu->pc);
           fprintf(stderr, "Unknown extended opcode -> 0x%x\n", extendedOpcode);
+          sleep(10000);
           exit(EXIT_FAILURE);
       }
       break;
@@ -740,6 +750,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
             default:
               printf("count -> 0x%x\n", cpu->pc);
               fprintf(stderr, "Unknown IY bit opcode -> 0x%x\n", extendedOpcode);
+              sleep(10000);
               exit(EXIT_FAILURE);
           }
           break;
@@ -768,7 +779,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         --cpu->pc;
         cpu->currentTstate += 17;
       } else {
-        cpu->pc += 0x3;
+        cpu->pc += 0x2;
         cpu->currentTstate += 10;
       }
       break;
