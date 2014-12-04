@@ -112,6 +112,12 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       *registerHexLookup[((opcode & 0x38) >> 3)] = memory[++cpu->pc];
       cpu->currentTstate += 7;
       break;
+    case 0x07: // rlca
+      cpu->AF.byte.flags.c = cpu->AF.byte.left & 0x80;
+      cpu->AF.byte.left <<= 1;
+      cpu->AF.byte.left += (cpu->AF.byte.flags.c);
+      cpu->currentTstate += 4;
+      break;
     case 0x08: // ex af, af'
       unsigned16Temp = cpu->AF.pair;
       cpu->AF.pair = cpu->_AF.pair;
@@ -571,6 +577,17 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       --cpu->pc;
       cpu->currentTstate += 17;
       break;
+    case 0xCE: // adc a, *
+      signed16Temp = (cpu->AF.byte.left + memory[++cpu->pc] + cpu->AF.byte.flags.c);
+      cpu->AF.byte.left += (memory[cpu->pc] + cpu->AF.byte.flags.c);
+      cpu->AF.byte.flags.c = (signed16Temp > 255);
+      cpu->AF.byte.flags.s = (signed16Temp < 0);
+      cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
+      // cpu->AF.flags.h = (is set if carry from bit 3)
+      // cpu->AF.flags.pv = (is set if overflow)
+      cpu->AF.byte.flags.n = 0;
+      cpu->currentTstate += 7;
+      break;
     case 0xD0: // ret nc
       if(cpu->AF.byte.flags.c == 0) {
         cpu->pc = memory[cpu->sp];
@@ -593,6 +610,17 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         cpu->pc += 2;
         cpu->currentTstate += 7;
       }
+      break;
+    case 0xD6: // sub *
+      signed16Temp = (cpu->AF.byte.left - memory[++cpu->pc]);
+      cpu->AF.byte.flags.c = (signed16Temp < 0);
+      cpu->AF.byte.left = signed16Temp;
+      cpu->AF.byte.flags.s = (signed16Temp < 0);
+      cpu->AF.byte.flags.z = (signed16Temp == 0);
+      // cpu->AF.flags.h = (is set when carry from bit 3)
+      // cpu->AF.flags.pv = (is set if overflow)
+      cpu->AF.byte.flags.n = 0;
+      cpu->currentTstate += 7;
       break;
     case 0xD9: // exx
       unsigned16Temp = cpu->BC.pair;
@@ -699,6 +727,14 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         default:
           printf("count -> 0x%x\n", cpu->pc);
           fprintf(stderr, "Unknown extended opcode -> 0x%x\n", extendedOpcode);
+          printf("BC->%x\n", cpu->BC.pair);
+          printf("DE->%x\n", cpu->DE.pair);
+          printf("HL->%x\n", cpu->HL.pair);
+          printf("A->%x\n", cpu->AF.byte.left);
+          printf("F->%x\n", cpu->AF.byte.flags.all);
+          printf("Zero->%x\n", cpu->AF.byte.flags.z);
+          printf("Carry->%x\n", cpu->AF.byte.flags.c);
+          printf("Tstate->%i\n", cpu->currentTstate);
           sleep(10000);
           exit(EXIT_FAILURE);
       }
