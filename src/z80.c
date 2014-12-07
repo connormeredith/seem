@@ -58,7 +58,15 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
   u8 unsigned8Temp;
   u8 extendedOpcode;
 
-  printf("PC::%x - OP::%x\n", cpu->pc, opcode);
+  printf("---- PC::%x - OP::%x\n", cpu->pc, opcode);
+  printf("BC->%x\n", cpu->BC.pair);
+  printf("DE->%x\n", cpu->DE.pair);
+  printf("HL->%x\n", cpu->HL.pair);
+  printf("A->%x\n", cpu->AF.byte.left);
+  printf("F->%x\n", cpu->AF.byte.flags.all);
+  printf("Zero->%x\n", cpu->AF.byte.flags.z);
+  printf("NEG->%x\n", cpu->AF.byte.flags.s);
+  printf("Carry->%x\n", cpu->AF.byte.flags.c);
 
   switch(opcode) {
     case 0x01: // ld bc, **
@@ -103,10 +111,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->currentTstate += 4;
       break;
     case 0x06: // ld b, *
-    case 0x16: // ld d, *
-    case 0x26: // ld h, *
     case 0x0E: // ld c, *
+    case 0x16: // ld d, *
     case 0x1E: // ld e, *
+    case 0x26: // ld h, *
     case 0x2E: // ld l, *
     case 0x3E: // ld a, *
       *registerHexLookup[((opcode & 0x38) >> 3)] = memory[++cpu->pc];
@@ -211,9 +219,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0x30: // jr nc
       if(cpu->AF.byte.flags.c == 0) {
-        unsigned8Temp = memory[cpu->pc + 1];
-        cpu->pc += unsigned8Temp;
-        cpu->pc--;
+        signed8Temp = memory[++cpu->pc];
+        cpu->pc += signed8Temp;
         cpu->currentTstate += 12;
       } else {
         cpu->pc++;
@@ -251,6 +258,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       unsigned16Temp += memory[++cpu->pc] << 8;
       cpu->AF.byte.left = memory[unsigned16Temp];
       cpu->currentTstate += 13;
+      break;
+    case 0x3F: // ccf
+      cpu->AF.byte.flags.c = !(cpu->AF.byte.flags.c);
+      cpu->AF.byte.flags.n = 0;
       break;
     case 0x40: // ld b, b
     case 0x41: // ld b, c
@@ -373,7 +384,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
       // cpu->AF.flags.h = (is set when carry from bit 3)
       // cpu->AF.flags.pv = (is set if overflow)
-      cpu->AF.byte.flags.n = 1;;
+      cpu->AF.byte.flags.n = 1;
       cpu->currentTstate += 4;
       break;
     case 0xA0: // AND b
@@ -689,7 +700,23 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xED: // Extended instruction set
       extendedOpcode = memory[++cpu->pc];
+      int temp;
       switch(extendedOpcode) {
+        case 0x42: // sbc hl, bc
+        case 0x52: // sbc hl, de
+        case 0x62: // sbc hl, hl
+        // case 0x72: // sbc hl, sp
+          temp = (cpu->HL.pair - *registerPairHexLookup[(extendedOpcode & 0x30) >> 4]);
+          temp -= cpu->AF.byte.flags.c;
+          cpu->AF.byte.flags.c = (temp < 0);
+          cpu->HL.pair = temp;
+          cpu->AF.byte.flags.s = (cpu->AF.byte.left < 0);
+          cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
+          // cpu->AF.flags.h = (is set when carry from bit 3)
+          // cpu->AF.flags.pv = (is set if overflow)
+          cpu->AF.byte.flags.n = 1;
+          cpu->currentTstate += 4;
+          break;
         case 0x43: // ld (**), bc
           unsigned16Temp = memory[++cpu->pc];
           unsigned16Temp += memory[++cpu->pc] << 8;
@@ -727,14 +754,6 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         default:
           printf("count -> 0x%x\n", cpu->pc);
           fprintf(stderr, "Unknown extended opcode -> 0x%x\n", extendedOpcode);
-          printf("BC->%x\n", cpu->BC.pair);
-          printf("DE->%x\n", cpu->DE.pair);
-          printf("HL->%x\n", cpu->HL.pair);
-          printf("A->%x\n", cpu->AF.byte.left);
-          printf("F->%x\n", cpu->AF.byte.flags.all);
-          printf("Zero->%x\n", cpu->AF.byte.flags.z);
-          printf("Carry->%x\n", cpu->AF.byte.flags.c);
-          printf("Tstate->%i\n", cpu->currentTstate);
           sleep(10000);
           exit(EXIT_FAILURE);
       }
@@ -791,14 +810,6 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
             default:
               printf("count -> 0x%x\n", cpu->pc);
               fprintf(stderr, "Unknown IY bit opcode -> 0x%x\n", extendedOpcode);
-              printf("BC->%x\n", cpu->BC.pair);
-              printf("DE->%x\n", cpu->DE.pair);
-              printf("HL->%x\n", cpu->HL.pair);
-              printf("A->%x\n", cpu->AF.byte.left);
-              printf("F->%x\n", cpu->AF.byte.flags.all);
-              printf("Zero->%x\n", cpu->AF.byte.flags.z);
-              printf("Carry->%x\n", cpu->AF.byte.flags.c);
-              printf("Tstate->%i\n", cpu->currentTstate);
               sleep(10000);
               exit(EXIT_FAILURE);
           }
@@ -806,14 +817,6 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         default:
           printf("count -> 0x%x\n", cpu->pc);
           fprintf(stderr, "Unknown IY opcode -> 0x%x\n", extendedOpcode);
-          printf("BC->%x\n", cpu->BC.pair);
-          printf("DE->%x\n", cpu->DE.pair);
-          printf("HL->%x\n", cpu->HL.pair);
-          printf("A->%x\n", cpu->AF.byte.left);
-          printf("F->%x\n", cpu->AF.byte.flags.all);
-          printf("Zero->%x\n", cpu->AF.byte.flags.z);
-          printf("Carry->%x\n", cpu->AF.byte.flags.c);
-          printf("Tstate->%i\n", cpu->currentTstate);
           sleep(10000);
           exit(EXIT_FAILURE);
       }
@@ -833,6 +836,30 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         cpu->currentTstate += 10;
       }
       break;
+    case 0xD8: // ret c
+      if(cpu->AF.byte.flags.c == 1) {
+        cpu->pc = memory[cpu->sp];
+        unsigned16Temp = memory[++cpu->sp] << 8;
+        cpu->sp++;
+        cpu->pc += unsigned16Temp;
+        --cpu->pc;
+        cpu->currentTstate += 11;
+      } else {
+        cpu->currentTstate += 5;
+      }
+      break;
+    case 0xF8: // ret m
+      if(cpu->AF.byte.flags.s == 1) {
+        cpu->pc = memory[cpu->sp];
+        unsigned16Temp = memory[++cpu->sp] << 8;
+        cpu->sp++;
+        cpu->pc += unsigned16Temp;
+        --cpu->pc;
+        cpu->currentTstate += 11;
+      } else {
+        cpu->currentTstate += 5;
+      }
+      break;
     case 0xFE: // cp n
       signed16Temp = cpu->AF.byte.left - memory[++cpu->pc];
       cpu->AF.byte.flags.c = (signed16Temp < 0);
@@ -846,14 +873,6 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     default:
       printf("count -> 0x%x\n", cpu->pc);
       fprintf(stderr, "Unknown opcode -> 0x%x\n", opcode);
-      printf("BC->%x\n", cpu->BC.pair);
-      printf("DE->%x\n", cpu->DE.pair);
-      printf("HL->%x\n", cpu->HL.pair);
-      printf("A->%x\n", cpu->AF.byte.left);
-      printf("F->%x\n", cpu->AF.byte.flags.all);
-      printf("Zero->%x\n", cpu->AF.byte.flags.z);
-      printf("Carry->%x\n", cpu->AF.byte.flags.c);
-      printf("Tstate->%i\n", cpu->currentTstate);
       sleep(10000);
       exit(EXIT_FAILURE);
   }
