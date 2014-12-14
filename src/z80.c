@@ -55,20 +55,23 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
   u16 unsigned16Temp;
   s16 signed16Temp;
   s8 signed8Temp;
-  u8 unsigned8Temp;
   u8 extendedOpcode;
+  int temp;
 
   printf("---- PC::%x - OP::%x\n", cpu->pc, opcode);
-  printf("BC->%x\n", cpu->BC.pair);
-  printf("DE->%x\n", cpu->DE.pair);
-  printf("HL->%x\n", cpu->HL.pair);
-  printf("A->%x\n", cpu->AF.byte.left);
-  printf("F->%x\n", cpu->AF.byte.flags.all);
-  printf("Zero->%x\n", cpu->AF.byte.flags.z);
-  printf("NEG->%x\n", cpu->AF.byte.flags.s);
-  printf("Carry->%x\n", cpu->AF.byte.flags.c);
+  // printf("BC->%x\n", cpu->BC.pair);
+  // printf("DE->%x\n", cpu->DE.pair);
+  // printf("HL->%x\n", cpu->HL.pair);
+  // printf("A->%x\n", cpu->AF.byte.left);
+  // printf("F->%x\n", cpu->AF.byte.flags.all);
+  // printf("Zero->%x\n", cpu->AF.byte.flags.z);
+  // printf("NEG->%x\n", cpu->AF.byte.flags.s);
+  // printf("Carry->%x\n", cpu->AF.byte.flags.c);
 
   switch(opcode) {
+    case 0x00: // nop
+      cpu->currentTstate += 4;
+      break;
     case 0x01: // ld bc, **
     case 0x11: // ld de, **
     case 0x21: // ld hl, **
@@ -216,6 +219,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->HL.byte[0] = memory[unsigned16Temp];
       cpu->HL.byte[1] = memory[unsigned16Temp + 1];
       cpu->currentTstate += 16;
+      break;
+    case 0x2F: // cpl
+      cpu->AF.byte.left = ~(cpu->AF.byte.left);
+      cpu->AF.byte.flags.n = 1;
+      cpu->currentTstate += 4;
       break;
     case 0x30: // jr nc
       if(cpu->AF.byte.flags.c == 0) {
@@ -486,6 +494,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       if(cpu->AF.byte.flags.z != 1) {
         unsigned16Temp = memory[++cpu->pc];
         cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->pc--;
         cpu->currentTstate += 12;
       } else {
         cpu->pc += 2;
@@ -498,6 +507,21 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->pc = unsigned16Temp;
       --cpu->pc;
       cpu->currentTstate += 10;
+      break;
+    case 0xC4: // CALL NZ, **
+      if(cpu->AF.byte.flags.z == 0) {
+        cpu->pc += 0x3;
+        memory[--cpu->sp] = cpu->pc >> 8;
+        memory[--cpu->sp] = cpu->pc;
+        cpu->pc -= 0x2;
+        unsigned16Temp = memory[cpu->pc];
+        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        --cpu->pc;
+        cpu->currentTstate += 17;
+      } else {
+        cpu->pc += 0x2;
+        cpu->currentTstate += 10;
+      }
       break;
     case 0xC5: // push bc
     case 0xD5: // push de
@@ -552,14 +576,186 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       --cpu->pc;
       cpu->currentTstate += 10;
       break;
+    case 0xCA: // jp z, **
+      if(cpu->AF.byte.flags.z != 0) {
+        unsigned16Temp = memory[++cpu->pc];
+        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->currentTstate += 12;
+      } else {
+        cpu->pc += 2;
+        cpu->currentTstate += 7;
+      }
+      break;
     case 0xCB: // BIT instruction set
       extendedOpcode = memory[++cpu->pc];
       switch(extendedOpcode) {
+        case 0x28: // sra b
+        case 0x29: // sra c
+        case 0x2A: // sra d
+        case 0x2B: // sra e
+        case 0x2C: // sra h
+        case 0x2D: // sra l
+        case 0x2F: // sra a
+          *registerHexLookup[(extendedOpcode & 0x07)] >>= 1;
+          *registerHexLookup[(extendedOpcode & 0x07)] >>= 1;
+          cpu->AF.byte.flags.c = *registerHexLookup[(extendedOpcode & 0x07)] & 1;
+          cpu->AF.byte.flags.s = 0;
+          cpu->AF.byte.flags.n = 0;
+          cpu->AF.byte.flags.z = (*registerHexLookup[(extendedOpcode & 0x07)] == 0);
+          cpu->currentTstate += 10;
+          break;
+        case 0x38: // srl b
+        case 0x39: // srl c
+        case 0x3A: // srl d
+        case 0x3B: // srl e
+        case 0x3C: // srl h
+        case 0x3D: // srl l
+        case 0x3F: // srl a
+          cpu->AF.byte.flags.c = *registerHexLookup[(extendedOpcode & 0x07)] & 1;
+          *registerHexLookup[(extendedOpcode & 0x07)] >>= 1;
+          cpu->AF.byte.flags.s = 0;
+          cpu->AF.byte.flags.n = 0;
+          cpu->AF.byte.flags.z = (*registerHexLookup[(extendedOpcode & 0x07)] == 0);
+          cpu->currentTstate += 10;
+          break;
+        case 0x40: // bit 0, b
+        case 0x48: // bit 1, b
+        case 0x50: // bit 2, b
+        case 0x58: // bit 3, b
+        case 0x60: // bit 4, b
+        case 0x68: // bit 5, b
+        case 0x70: // bit 6, b
+        case 0x78: // bit 7, b
+        case 0x41: // bit 0, c
+        case 0x49: // bit 1, c
+        case 0x51: // bit 2, c
+        case 0x59: // bit 3, c
+        case 0x61: // bit 4, c
+        case 0x69: // bit 5, c
+        case 0x71: // bit 6, c
+        case 0x79: // bit 7, c
+        case 0x42: // bit 0, d
+        case 0x4A: // bit 1, d
+        case 0x52: // bit 2, d
+        case 0x5A: // bit 3, d
+        case 0x62: // bit 4, d
+        case 0x6A: // bit 5, d
+        case 0x72: // bit 6, d
+        case 0x7A: // bit 7, d
+        case 0x43: // bit 0, e
+        case 0x4B: // bit 1, e
+        case 0x53: // bit 2, e
+        case 0x5B: // bit 3, e
+        case 0x63: // bit 4, e
+        case 0x6B: // bit 5, e
+        case 0x73: // bit 6, e
+        case 0x7B: // bit 7, e
+        case 0x44: // bit 0, h
+        case 0x4C: // bit 1, h
+        case 0x54: // bit 2, h
+        case 0x5C: // bit 3, h
+        case 0x64: // bit 4, h
+        case 0x6C: // bit 5, h
+        case 0x74: // bit 6, h
+        case 0x7C: // bit 7, h
+        case 0x45: // bit 0, l
+        case 0x4D: // bit 1, l
+        case 0x55: // bit 2, l
+        case 0x5D: // bit 3, l
+        case 0x65: // bit 4, l
+        case 0x6D: // bit 5, l
+        case 0x75: // bit 6, l
+        case 0x7D: // bit 7, l
+        case 0x47: // bit 0, a
+        case 0x4F: // bit 1, a
+        case 0x57: // bit 2, a
+        case 0x5F: // bit 3, a
+        case 0x67: // bit 4, a
+        case 0x6F: // bit 5, a
+        case 0x77: // bit 6, a
+        case 0x7F: // bit 7, a
+          cpu->AF.byte.flags.z = (*registerHexLookup[(extendedOpcode & 0x07)] & bitHexLookup[((extendedOpcode & 0x38) >> 3)]) ? 0 : 1;
+          cpu->AF.byte.flags.n = 0;
+          cpu->currentTstate += 8;
+          break;
+        case 0x80: // res 0, b
+        case 0x88: // res 1, b
+        case 0x90: // res 2, b
+        case 0x98: // res 3, b
+        case 0xA0: // res 4, b
+        case 0xA8: // res 5, b
+        case 0xB0: // res 6, b
+        case 0xB8: // res 7, b
+        case 0x81: // res 0, c
+        case 0x89: // res 1, c
+        case 0x91: // res 2, c
+        case 0x99: // res 3, c
+        case 0xA1: // res 4, c
+        case 0xA9: // res 5, c
+        case 0xB1: // res 6, c
+        case 0xB9: // res 7, c
+        case 0x82: // res 0, d
+        case 0x8A: // res 1, d
+        case 0x92: // res 2, d
+        case 0x9A: // res 3, d
+        case 0xA2: // res 4, d
+        case 0xAA: // res 5, d
+        case 0xB2: // res 6, d
+        case 0xBA: // res 7, d
+        case 0x83: // res 0, e
+        case 0x8B: // res 1, e
+        case 0x93: // res 2, e
+        case 0x9B: // res 3, e
+        case 0xA3: // res 4, e
+        case 0xAB: // res 5, e
+        case 0xB3: // res 6, e
+        case 0xBB: // res 7, e
+        case 0x84: // res 0, h
+        case 0x8C: // res 1, h
+        case 0x94: // res 2, h
+        case 0x9C: // res 3, h
+        case 0xA4: // res 4, h
+        case 0xAC: // res 5, h
+        case 0xB4: // res 6, h
+        case 0xBC: // res 7, h
+        case 0x85: // res 0, l
+        case 0x8D: // res 1, l
+        case 0x95: // res 2, l
+        case 0x9D: // res 3, l
+        case 0xA5: // res 4, l
+        case 0xAD: // res 5, l
+        case 0xB5: // res 6, l
+        case 0xBD: // res 7, l
+        case 0x87: // res 0, a
+        case 0x8F: // res 1, a
+        case 0x97: // res 2, a
+        case 0x9F: // res 3, a
+        case 0xA7: // res 4, a
+        case 0xAF: // res 5, a
+        case 0xB7: // res 6, a
+        case 0xBF: // res 7, a
+          *registerHexLookup[(extendedOpcode & 0x07)] &= ~(bitHexLookup[((extendedOpcode & 0x38) >> 3)]);
+          cpu->currentTstate += 8;
+          break;
         case 0x86: // res 0, (hl)
+        case 0x8E: // res 1, (hl)
+        case 0x96: // res 2, (hl)
+        case 0x9E: // res 3, (hl)
+        case 0xA6: // res 4, (hl)
+        case 0xAE: // res 5, (hl)
+        case 0xB6: // res 6, (hl)
+        case 0xBE: // res 7, (hl)
           memory[(cpu->HL.pair)] &= ~(bitHexLookup[((extendedOpcode & 0x38) >> 3)]);
           cpu->currentTstate += 15;
           break;
         case 0xC6: // set 0, (hl)
+        case 0xCE: // set 1, (hl)
+        case 0xD6: // set 2, (hl)
+        case 0xDE: // set 3, (hl)
+        case 0xE6: // set 4, (hl)
+        case 0xEE: // set 5, (hl)
+        case 0xF6: // set 6, (hl)
+        case 0xFE: // set 7, (hl)
           memory[(cpu->HL.pair)] |= (bitHexLookup[((extendedOpcode & 0x38) >> 3)]);
           cpu->currentTstate += 15;
           break;
@@ -659,6 +855,46 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xDD: // IX instruction set
       extendedOpcode = memory[++cpu->pc];
       switch(extendedOpcode) {
+        case 0x09: // add ix, bc
+          temp = (cpu->IX.pair + cpu->BC.pair);
+          cpu->AF.byte.flags.c = (temp > 65535);
+          cpu->IX.pair += cpu->BC.pair;
+          cpu->AF.byte.flags.n = 0;
+          cpu->currentTstate += 15;
+          break;
+        case 0x21: // ld ix, **
+          cpu->IX.byte[0] = memory[++cpu->pc];
+          cpu->IX.byte[1] = memory[++cpu->pc];
+          cpu->currentTstate += 14;
+          break;
+        case 0x22: // ld (**), IX
+          unsigned16Temp = memory[++cpu->pc];
+          unsigned16Temp += memory[++cpu->pc] << 8;
+          memory[unsigned16Temp] = cpu->IX.byte[0];
+          memory[unsigned16Temp+1] = cpu->IX.byte[1];
+          cpu->currentTstate += 20;
+          break;
+        case 0x23: // inc IX
+          cpu->IX.pair += 1;
+          cpu->currentTstate += 10;
+          break;
+        case 0x2A: // ld IX, (**)
+          unsigned16Temp = memory[++cpu->pc];
+          unsigned16Temp += memory[++cpu->pc] << 8;
+          cpu->IX.byte[0] = memory[unsigned16Temp];
+          cpu->IX.byte[1] = memory[unsigned16Temp + 1];
+          cpu->currentTstate += 20;
+          break;
+        case 0x46: // ld b, (IX+*)
+        case 0x4E: // ld c, (IX+*)
+        case 0x56: // ld d, (IX+*)
+        case 0x5E: // ld e, (IX+*)
+        case 0x66: // ld h, (IX+*)
+        case 0x6E: // ld l, (IX+*)
+        case 0x7E: // ld b, (IX+*)
+          *registerHexLookup[((extendedOpcode & 0x38) >> 3)] = memory[(cpu->IX.pair + memory[++cpu->pc])];
+          cpu->currentTstate += 19;
+          break;
         case 0xE1: // pop IX
           cpu->IX.byte[0] = memory[cpu->sp];
           cpu->IX.byte[1] = memory[++cpu->sp];
@@ -670,12 +906,25 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           memory[--cpu->sp] = cpu->IX.byte[0];
           cpu->currentTstate += 15;
           break;
+        case 0xE9: // jp ix
+          cpu->pc = cpu->IX.pair;
+          cpu->pc--;
+          cpu->currentTstate += 8;
+          break;
         default:
           printf("count -> 0x%x\n", cpu->pc);
           fprintf(stderr, "Unknown IX opcode -> 0x%x\n", extendedOpcode);
           sleep(10000);
           exit(EXIT_FAILURE);
       }
+      break;
+    case 0xE3: // ex (sp), HL
+      unsigned16Temp = memory[cpu->sp];
+      unsigned16Temp += memory[(cpu->sp + 1)] << 8;
+      memory[cpu->sp] = cpu->HL.byte[1];
+      memory[(cpu->sp + 1)] = cpu->HL.byte[0];
+      cpu->HL.pair = unsigned16Temp;
+      cpu->currentTstate += 4;
       break;
     case 0xE6: // and *
       cpu->AF.byte.left &= memory[++cpu->pc];
@@ -710,8 +959,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           temp -= cpu->AF.byte.flags.c;
           cpu->AF.byte.flags.c = (temp < 0);
           cpu->HL.pair = temp;
-          cpu->AF.byte.flags.s = (cpu->AF.byte.left < 0);
-          cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
+          cpu->AF.byte.flags.s = (cpu->HL.pair < 0);
+          cpu->AF.byte.flags.z = (cpu->HL.pair == 0);
           // cpu->AF.flags.h = (is set when carry from bit 3)
           // cpu->AF.flags.pv = (is set if overflow)
           cpu->AF.byte.flags.n = 1;
@@ -836,6 +1085,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         cpu->currentTstate += 10;
       }
       break;
+    case 0xD3: // out (*), a
+      // implement later
+      cpu->pc++;
+      cpu->currentTstate += 11;
+      break;
     case 0xD8: // ret c
       if(cpu->AF.byte.flags.c == 1) {
         cpu->pc = memory[cpu->sp];
@@ -848,6 +1102,19 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         cpu->currentTstate += 5;
       }
       break;
+    case 0xEE: // XOR *
+      cpu->AF.byte.left ^= memory[++cpu->pc];
+      cpu->AF.byte.flags.s = (cpu->AF.byte.left < 0);
+      cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
+      cpu->AF.byte.flags.h = 0;
+      // cpu->AF.flags.pv = (is set if overflow)
+      cpu->AF.byte.flags.n = 0;
+      cpu->AF.byte.flags.c = 0;
+      cpu->currentTstate += 7;
+      break;
+    case 0xF3: // di
+      // disables interrupts -- if they were implemented...
+      break;
     case 0xF8: // ret m
       if(cpu->AF.byte.flags.s == 1) {
         cpu->pc = memory[cpu->sp];
@@ -859,6 +1126,9 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       } else {
         cpu->currentTstate += 5;
       }
+      break;
+    case 0xFB: // ei
+      // turns on interrupts again
       break;
     case 0xFE: // cp n
       signed16Temp = cpu->AF.byte.left - memory[++cpu->pc];
