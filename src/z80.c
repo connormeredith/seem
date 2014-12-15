@@ -580,6 +580,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       if(cpu->AF.byte.flags.z != 0) {
         unsigned16Temp = memory[++cpu->pc];
         cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->pc--;
         cpu->currentTstate += 12;
       } else {
         cpu->pc += 2;
@@ -589,6 +590,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xCB: // BIT instruction set
       extendedOpcode = memory[++cpu->pc];
       switch(extendedOpcode) {
+        case 0x0E: // rrc (hl)
+          cpu->AF.byte.flags.c = memory[cpu->HL.pair] & 0x1;
+          signed8Temp = memory[cpu->HL.pair];
+          signed8Temp >>= 1;
+          signed8Temp += (signed8Temp << 7);
+          cpu->AF.byte.flags.s = (signed8Temp < 0);
+          cpu->AF.byte.flags.z = (signed8Temp == 0);
+          memory[cpu->HL.pair] = signed8Temp;
+          cpu->currentTstate += 15;
+          break;
         case 0x28: // sra b
         case 0x29: // sra c
         case 0x2A: // sra d
@@ -596,7 +607,6 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         case 0x2C: // sra h
         case 0x2D: // sra l
         case 0x2F: // sra a
-          *registerHexLookup[(extendedOpcode & 0x07)] >>= 1;
           *registerHexLookup[(extendedOpcode & 0x07)] >>= 1;
           cpu->AF.byte.flags.c = *registerHexLookup[(extendedOpcode & 0x07)] & 1;
           cpu->AF.byte.flags.s = 0;
