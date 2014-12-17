@@ -55,7 +55,7 @@ void render(u8 memory[]) {
 
 	SDL_UnlockSurface(surface);
 	SDL_UpdateWindowSurface(window);
-	SDL_Delay(100);
+	SDL_Delay(50);
 }
 
 /**
