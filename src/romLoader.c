@@ -1,8 +1,9 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "romLoader.h"
-#include "Z80.h"
+#include "z80.h"
 
 void loadRom(char *filename, Z80* cpu, u8 memory[]) {
   
@@ -11,6 +12,7 @@ void loadRom(char *filename, Z80* cpu, u8 memory[]) {
   FILE* fp = fopen(filename, "rb");
   if(fp == NULL) {
     printf("Failed to open file.\n");
+    return;
     //ERROR
   }
 
@@ -124,21 +126,27 @@ void _loadMemoryBlocks(FILE* fp, u8 memory[]) {
   int complete = 4;
 
   while(complete != 1) {
+    int i;
 
     blockLength = _getNextWord(fp);
     currentPage = _getNextByte(fp);
 
+#if 1
+fprintf (stderr, "Loading memory block: blockLength = %d\n", blockLength);
+#endif
     // Move the memory pointer to the correct place in memory for this page
     memoryPtr = &memory[pageMapping[currentPage]];
 
-    for (int i = 0; i < blockLength; i++) {
+    for (i = 0; i < blockLength; i++) {
       bytes[0] = _getNextByte(fp);
       if(bytes[0] == 0xED) {
         bytes[1] = _getNextByte(fp);
         if(bytes[1] == 0xED) {
+	  int j;
+
           bytes[2] = _getNextByte(fp);
           bytes[3] = _getNextByte(fp);
-          for(int j = 0; j < bytes[2]; j++) {
+          for(j = 0; j < bytes[2]; j++) {
             *memoryPtr = bytes[3];
             memoryPtr++;
           }
@@ -162,14 +170,15 @@ void _loadMemoryBlocks(FILE* fp, u8 memory[]) {
 int _getNextByte(FILE* fp) {
   int byte = fgetc(fp);
   if(byte == EOF) {
-    fprintf(stderr, "Failed to get next byte from file.\n");
+    fprintf(stderr, "Failed to get next byte from file (byte %d).\n", (int)ftell (fp));
     exit(EXIT_FAILURE);
   }
   return byte;
 }
 
 int _getNextWord(FILE* fp) {
-  int word;
+  int word = 0;
+
   if(fread(&word, sizeof(u16), 1, fp) != 1) {
     fprintf(stderr, "Failed to get next word from file.\n");
     exit(EXIT_FAILURE);

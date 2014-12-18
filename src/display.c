@@ -36,15 +36,18 @@ void render(u8 memory[]) {
 	u8 actualRow, displayByte, attributeByte, currentPixelBit;
 	int rowPointer;
 	u8 offset = 0;
+	int vCount;
 
-	for(int vCount = 0; vCount < 192; vCount++) {
+	for(vCount = 0; vCount < 192; vCount++) {
+		int hCount;
+
 		if((vCount % 8) == 0 && vCount != 0) offset++;
 		if((vCount % 64) == 0 && vCount != 0) offset = (offset - 8) + 64;
 
 		actualRow = (((vCount % 8) * 8) + offset);
 		rowPointer = actualRow * (surface->pitch / sizeof(unsigned int));
 
-		for(int hCount = 0; hCount < 256; hCount++) {
+		for(hCount = 0; hCount < 256; hCount++) {
 			displayByte = memory[0x4000 + (hCount >> 3) + (vCount << 5)];
 			attributeByte = memory[0x5800 + ((actualRow >> 3) << 5) + (hCount >> 3)];
 			currentPixelBit = 7 - (hCount % 8);
