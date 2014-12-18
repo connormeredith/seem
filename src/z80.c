@@ -1069,6 +1069,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           *registerPairHexLookupSeparate[((extendedOpcode & 0x30) >> 4)][1] = memory[unsigned16Temp + 1];
           cpu->currentTstate += 20;
           break;
+        case 0x78: // in A, (c)
+          cpu->AF.byte.left = memory[(memory[++cpu->pc])];
+          cpu->currentTstate += 11;
+          break;
         case 0xB0: // ldir
           memory[cpu->DE.pair] = memory[cpu->HL.pair];
           cpu->HL.pair++;
