@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "romLoader.h"
+#include "snapshot.h"
 #include "display.h"
 #include "main.h"
 #include "z80.h"
@@ -21,9 +21,8 @@ int main(int argc, char **argv) {
     return 1;
   } else {
     init(&CPU);
-    loadRom(argv[1], &CPU, RAM); // Load ROM from file into memory
-    // initDisplay(RAM);
-    // printRAM();
+    initDisplay(RAM);
+    loadSnapshot(argv[1], &CPU, RAM);
     executeOpcode(&CPU, RAM, RAM[CPU.pc]);
     for(;;) {
       u8 opcode;
@@ -32,7 +31,7 @@ int main(int argc, char **argv) {
         opcode = 0xFF;
         printf("MASKABLE INTERRUPT\n");
         printf("REDRAW: Tstate=%i\n", CPU.currentTstate);
-        // render(RAM);
+        render(RAM);
       } else {
         opcode = fetchOpcode(&CPU, RAM);
       }
@@ -40,13 +39,5 @@ int main(int argc, char **argv) {
       executeOpcode(&CPU, RAM, opcode);
     }
     return 0;
-  }
-}
-
-void printRAM() {
-  printf("RAM:\n");
-  for (u16 i = 0x5c30; i <= 0x5c3F; i++) {
-    printf("-------------------------\n");
-    printf("0x%x -> 0x%x\n", i, RAM[i]);
   }
 }

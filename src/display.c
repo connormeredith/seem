@@ -18,8 +18,6 @@ void initDisplay(u8 memory[]) {
   window = SDL_CreateWindow("SEEM", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
 
   render(memory);
-
-  // SDL_Delay(10000);
 }
 
 /**
@@ -55,7 +53,6 @@ void render(u8 memory[]) {
 
 	SDL_UnlockSurface(surface);
 	SDL_UpdateWindowSurface(window);
-	SDL_Delay(50);
 }
 
 /**
