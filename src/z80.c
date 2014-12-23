@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "z80.h"
 #include "main.h"
@@ -12,6 +13,8 @@ u16* registerPairHexLookup[4];
 u8* registerPairHexLookupSeparate[4][2];
 
 void init(Z80* cpu) {
+  memset ((void *)cpu, 0, sizeof (Z80));
+
   registerHexLookup[0] = &cpu->BC.byte[1];
   registerHexLookup[1] = &cpu->BC.byte[0];
   registerHexLookup[2] = &cpu->DE.byte[1];
@@ -201,7 +204,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0x22: // ld **, hl
       unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += memory[++cpu->pc] << 8;
+      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
       memory[unsigned16Temp] = cpu->HL.byte[0];
       memory[++unsigned16Temp] = cpu->HL.byte[1];
       cpu->currentTstate += 16;
@@ -218,7 +221,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0x2A: // ld hl, (**)
       unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += memory[++cpu->pc] << 8;
+      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
       cpu->HL.byte[0] = memory[unsigned16Temp];
       cpu->HL.byte[1] = memory[unsigned16Temp + 1];
       cpu->currentTstate += 16;
@@ -240,7 +243,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0x32: // ld **, a
       unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += memory[++cpu->pc] << 8;
+      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
       memory[unsigned16Temp] = cpu->AF.byte.left;
       cpu->currentTstate += 13;
       break;
@@ -266,7 +269,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0x3A: // ld a, (**)
       unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += memory[++cpu->pc] << 8;
+      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
       cpu->AF.byte.left = memory[unsigned16Temp];
       cpu->currentTstate += 13;
       break;
@@ -475,7 +478,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xC0: // ret nz
       if(cpu->AF.byte.flags.z == 0) {
         cpu->pc = memory[cpu->sp];
-        unsigned16Temp = memory[++cpu->sp] << 8;
+        unsigned16Temp = ((u16)memory[++cpu->sp] << 8);
         cpu->sp++;
         cpu->pc += unsigned16Temp;
         --cpu->pc;
@@ -496,7 +499,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xC2: // jp nz
       if(cpu->AF.byte.flags.z != 1) {
         unsigned16Temp = memory[++cpu->pc];
-        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->pc = (((u16)memory[++cpu->pc] << 8)) + unsigned16Temp;
         cpu->pc--;
         cpu->currentTstate += 12;
       } else {
@@ -506,7 +509,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xC3: // jp **
       unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += memory[++cpu->pc] << 8;
+      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
       cpu->pc = unsigned16Temp;
       --cpu->pc;
       cpu->currentTstate += 10;
@@ -518,7 +521,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         memory[--cpu->sp] = cpu->pc;
         cpu->pc -= 0x2;
         unsigned16Temp = memory[cpu->pc];
-        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
         --cpu->pc;
         cpu->currentTstate += 17;
       } else {
@@ -562,7 +565,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xC8: // ret z
       if(cpu->AF.byte.flags.z) {
         cpu->pc = memory[cpu->sp];
-        unsigned16Temp = memory[++cpu->sp] << 8;
+        unsigned16Temp = ((u16)memory[++cpu->sp] << 8);
         cpu->pc += unsigned16Temp;
         cpu->sp++;
         --cpu->pc;
@@ -573,7 +576,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xC9: // ret
       cpu->pc = memory[cpu->sp];
-      unsigned16Temp = memory[++cpu->sp] << 8;
+      unsigned16Temp = ((u16)memory[++cpu->sp] << 8);
       cpu->sp++;
       cpu->pc += unsigned16Temp;
       --cpu->pc;
@@ -582,7 +585,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xCA: // jp z, **
       if(cpu->AF.byte.flags.z != 0) {
         unsigned16Temp = memory[++cpu->pc];
-        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
         cpu->pc--;
         cpu->currentTstate += 12;
       } else {
@@ -594,14 +597,19 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       extendedOpcode = memory[++cpu->pc];
       switch(extendedOpcode) {
         case 0x0E: // rrc (hl)
-          cpu->AF.byte.flags.c = memory[cpu->HL.pair] & 0x1;
-          signed8Temp = memory[cpu->HL.pair];
-          signed8Temp >>= 1;
-          signed8Temp += (signed8Temp << 7);
-          cpu->AF.byte.flags.s = (signed8Temp < 0);
-          cpu->AF.byte.flags.z = (signed8Temp == 0);
-          memory[cpu->HL.pair] = signed8Temp;
-          cpu->currentTstate += 15;
+	  {
+	  	u8 tmp;
+
+		  cpu->AF.byte.flags.c = memory[cpu->HL.pair] & 0x1;
+		  signed8Temp = memory[cpu->HL.pair];
+		  tmp = signed8Temp;
+		  signed8Temp >>= 1;
+		  signed8Temp += (tmp << 7);
+		  cpu->AF.byte.flags.s = (signed8Temp < 0);
+		  cpu->AF.byte.flags.z = (signed8Temp == 0);
+		  memory[cpu->HL.pair] = signed8Temp;
+		  cpu->currentTstate += 15;
+	  }
           break;
         case 0x28: // sra b
         case 0x29: // sra c
@@ -852,7 +860,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       memory[--cpu->sp] = cpu->pc;
       cpu->pc -= 0x2;
       unsigned16Temp = memory[cpu->pc];
-      cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+      cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
       --cpu->pc;
       cpu->currentTstate += 17;
       break;
@@ -870,7 +878,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xD0: // ret nc
       if(cpu->AF.byte.flags.c == 0) {
         cpu->pc = memory[cpu->sp];
-        unsigned16Temp = memory[++cpu->sp] << 8;
+        unsigned16Temp = ((u16)memory[++cpu->sp] << 8);
         cpu->sp++;
         cpu->pc += unsigned16Temp;
         --cpu->pc;
@@ -882,7 +890,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xD2: // jp nc
       if(cpu->AF.byte.flags.c == 0) {
         unsigned16Temp = memory[++cpu->pc];
-        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
         cpu->pc--;
         cpu->currentTstate += 12;
       } else {
@@ -916,7 +924,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xDA: // jp c
       if(cpu->AF.byte.flags.c == 1) {
         unsigned16Temp = memory[++cpu->pc];
-        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
         cpu->pc--;
         cpu->currentTstate += 12;
       } else {
@@ -941,7 +949,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           break;
         case 0x22: // ld (**), IX
           unsigned16Temp = memory[++cpu->pc];
-          unsigned16Temp += memory[++cpu->pc] << 8;
+          unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
           memory[unsigned16Temp] = cpu->IX.byte[0];
           memory[unsigned16Temp+1] = cpu->IX.byte[1];
           cpu->currentTstate += 20;
@@ -952,7 +960,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           break;
         case 0x2A: // ld IX, (**)
           unsigned16Temp = memory[++cpu->pc];
-          unsigned16Temp += memory[++cpu->pc] << 8;
+          unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
           cpu->IX.byte[0] = memory[unsigned16Temp];
           cpu->IX.byte[1] = memory[unsigned16Temp + 1];
           cpu->currentTstate += 20;
@@ -1000,7 +1008,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xE3: // ex (sp), HL
       unsigned16Temp = memory[cpu->sp];
-      unsigned16Temp += memory[(cpu->sp + 1)] << 8;
+      unsigned16Temp += ((u16)memory[(cpu->sp + 1)] << 8);
       memory[cpu->sp] = cpu->HL.byte[1];
       memory[(cpu->sp + 1)] = cpu->HL.byte[0];
       cpu->HL.pair = unsigned16Temp;
