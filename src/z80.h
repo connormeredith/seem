@@ -49,6 +49,7 @@ struct TAG_Z80 {
 typedef struct TAG_Z80 Z80;
 
 void init(Z80* cpu);
+void debug(Z80*, u8[], int);
 
 // Processor functions.
 u8 fetchOpcode(Z80*, u8[]);

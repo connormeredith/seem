@@ -29,8 +29,6 @@ int main(int argc, char **argv) {
       if(CPU.currentTstate >= 69888) {
         CPU.currentTstate %= 69888;
         opcode = 0xFF;
-        printf("MASKABLE INTERRUPT\n");
-        printf("REDRAW: Tstate=%i\n", CPU.currentTstate);
         render(RAM);
       } else {
         opcode = fetchOpcode(&CPU, RAM);
