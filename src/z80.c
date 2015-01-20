@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "lib/memory/memory.h"
 #include "z80.h"
 #include "main.h"
 
@@ -38,10 +39,10 @@ void init(Z80* cpu) {
   registerPairHexLookupSeparate[3][1] = &cpu->AF.byte.left;
 }
 
-void debug(Z80* cpu, u8 memory[], int quit) {
+void debug(Z80* cpu, int quit) {
   printf("===================\n");
   printf("count -> 0x%x\n", cpu->pc);
-  fprintf(stderr, "Unknown opcode -> 0x%x\n", memory[cpu->pc]);
+  fprintf(stderr, "Unknown opcode -> 0x%x\n", memRead(cpu->pc));
   printf("A->%x\n", cpu->AF.byte.left);
   printf("F->%x\n", cpu->AF.byte.flags.all);
   printf("BC->%x\n", cpu->BC.pair);
@@ -64,8 +65,8 @@ void debug(Z80* cpu, u8 memory[], int quit) {
  * @param  memory The ZX Spectrum's memory array.
  * @return        The next 8 bit opcode.
  */
-u8 fetchOpcode(Z80* cpu, u8 memory[]) {
-  return memory[++cpu->pc];
+u8 fetchOpcode(Z80* cpu) {
+  return memRead(++cpu->pc);
 }
 
 /**
@@ -74,7 +75,7 @@ u8 fetchOpcode(Z80* cpu, u8 memory[]) {
  * @param memory The ZX Spectrum's memory array.
  * @param opcode The 8 bit opcode to be executed.
  */
-void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
+void executeOpcode(Z80* cpu, u8 opcode) {
   u16 unsigned16Temp;
   s16 signed16Temp;
   s8 signed8Temp;
@@ -96,8 +97,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0x11: // ld de, **
     case 0x21: // ld hl, **
     // still need to do ld sp, **
-      *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0] = memory[++cpu->pc];
-      *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1] = memory[++cpu->pc];
+      *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0] = memRead(++cpu->pc);
+      *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1] = memRead(++cpu->pc);
       cpu->currentTstate += 10;
       break;
     case 0x03: // inc bc
@@ -148,7 +149,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0x26: // ld h, *
     case 0x2E: // ld l, *
     case 0x3E: // ld a, *
-      *registerHexLookup[((opcode & 0x38) >> 3)] = memory[++cpu->pc];
+      *registerHexLookup[((opcode & 0x38) >> 3)] = memRead(++cpu->pc);
       cpu->currentTstate += 7;
       break;
     case 0x07: // rlca
@@ -190,7 +191,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0x10: // djnz
       cpu->BC.byte[1]--;
       if(cpu->BC.byte[1] != 0) {
-        signed8Temp = memory[++cpu->pc];
+        signed8Temp = memRead(++cpu->pc);
         cpu->pc+=signed8Temp; // Requires signed addition
         cpu->currentTstate += 13;
       } else {
@@ -199,16 +200,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0x12: // ld (de), a
-      memory[cpu->DE.pair] = cpu->AF.byte.left;
+      memWrite(cpu->DE.pair, cpu->AF.byte.left);
       cpu->currentTstate += 7;
       break;
     case 0x18: // jr *
-      signed8Temp = memory[++cpu->pc];
+      signed8Temp = memRead(++cpu->pc);
       cpu->pc += signed8Temp;
       cpu->currentTstate += 12;
       break;
     case 0x1A: // ld a, (de)
-      cpu->AF.byte.left = memory[cpu->DE.pair];
+      cpu->AF.byte.left = memRead(cpu->DE.pair);
       cpu->currentTstate += 7;
       break;
     case 0x1F: // rra
@@ -220,7 +221,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0x20: // jr nz, *
       if(cpu->AF.byte.flags.z == 0) {
-        signed8Temp = memory[++cpu->pc];
+        signed8Temp = memRead(++cpu->pc);
         cpu->pc+=signed8Temp; // Requires signed addition
         cpu->currentTstate += 12;
       } else {
@@ -229,15 +230,15 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0x22: // ld **, hl
-      unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
-      memory[unsigned16Temp] = cpu->HL.byte[0];
-      memory[++unsigned16Temp] = cpu->HL.byte[1];
+      unsigned16Temp = memRead(++cpu->pc);
+      unsigned16Temp += ((u16)memRead(++cpu->pc) << 8);
+      memWrite(unsigned16Temp, cpu->HL.byte[0]);
+      memWrite(++unsigned16Temp, cpu->HL.byte[1]);
       cpu->currentTstate += 16;
       break;
     case 0x28: // jr z, *
       if(cpu->AF.byte.flags.z == 1) {
-        signed8Temp = memory[++cpu->pc];
+        signed8Temp = memRead(++cpu->pc);
         cpu->pc+=signed8Temp; // Requires signed addition
         cpu->currentTstate += 12;
       } else {
@@ -246,10 +247,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0x2A: // ld hl, (**)
-      unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
-      cpu->HL.byte[0] = memory[unsigned16Temp];
-      cpu->HL.byte[1] = memory[unsigned16Temp + 1];
+      unsigned16Temp = memRead(++cpu->pc);
+      unsigned16Temp += ((u16)memRead(++cpu->pc) << 8);
+      cpu->HL.byte[0] = memRead(unsigned16Temp);
+      cpu->HL.byte[1] = memRead(unsigned16Temp + 1);
       cpu->currentTstate += 16;
       break;
     case 0x2F: // cpl
@@ -259,7 +260,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0x30: // jr nc
       if(cpu->AF.byte.flags.c == 0) {
-        signed8Temp = memory[++cpu->pc];
+        signed8Temp = memRead(++cpu->pc);
         cpu->pc += signed8Temp;
         cpu->currentTstate += 12;
       } else {
@@ -268,13 +269,13 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0x32: // ld **, a
-      unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
-      memory[unsigned16Temp] = cpu->AF.byte.left;
+      unsigned16Temp = memRead(++cpu->pc);
+      unsigned16Temp += ((u16)memRead(++cpu->pc) << 8);
+      memWrite(unsigned16Temp, cpu->AF.byte.left);
       cpu->currentTstate += 13;
       break;
     case 0x36: // ld (hl), *
-      memory[cpu->HL.pair] = memory[++cpu->pc];
+      memWrite(cpu->HL.pair, memRead(++cpu->pc));
       cpu->currentTstate += 10;
       break;
     case 0x37: // SCF
@@ -285,7 +286,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0x38: // jr c
       if(cpu->AF.byte.flags.c == 1) {
-        signed8Temp = memory[++cpu->pc];
+        signed8Temp = memRead(++cpu->pc);
         cpu->pc += signed8Temp;
         // cpu->pc--;
         cpu->currentTstate += 12;
@@ -295,9 +296,9 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0x3A: // ld a, (**)
-      unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
-      cpu->AF.byte.left = memory[unsigned16Temp];
+      unsigned16Temp = memRead(++cpu->pc);
+      unsigned16Temp += ((u16)memRead(++cpu->pc) << 8);
+      cpu->AF.byte.left = memRead(unsigned16Temp);
       cpu->currentTstate += 13;
       break;
     case 0x3F: // ccf
@@ -363,7 +364,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0x66: // ld h, (hl)
     case 0x6E: // ld l, (hl)
     case 0x7E: // ld a, (hl)
-      *registerHexLookup[((opcode & 0x38) >> 3)] = memory[cpu->HL.pair];
+      *registerHexLookup[((opcode & 0x38) >> 3)] = memRead(cpu->HL.pair);
       cpu->currentTstate += 7;
       break;
     case 0x70: // ld (hl), b
@@ -373,7 +374,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0x74: // ld (hl), h
     case 0x75: // ld (hl), l
     case 0x77: // ld (hl), a
-      memory[cpu->HL.pair] = *registerHexLookup[(opcode & 0x07)];
+      memWrite(cpu->HL.pair, (*registerHexLookup[(opcode & 0x07)]));
       cpu->currentTstate += 7;
       break;
     case 0x80: // add a, b
@@ -487,7 +488,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->currentTstate += 4;
       break;
     case 0xAE: // XOR (hl)
-      signed8Temp = cpu->AF.byte.left ^ memory[cpu->HL.pair];
+      signed8Temp = cpu->AF.byte.left ^ memRead(cpu->HL.pair);
       cpu->AF.byte.left = signed8Temp;
 
       oneBits = 0;
@@ -548,10 +549,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->currentTstate += 4;
       break;
     case 0xBE: // cp (hl)
-      signed16Temp = (cpu->AF.byte.left - memory[cpu->HL.pair]);
+      signed16Temp = (cpu->AF.byte.left - memRead(cpu->HL.pair));
       cpu->AF.byte.flags.c = (signed16Temp < 0);
       cpu->AF.byte.flags.pv = (signed16Temp < 0);
-      signed8Temp = (cpu->AF.byte.left - memory[cpu->HL.pair]);
+      signed8Temp = (cpu->AF.byte.left - memRead(cpu->HL.pair));
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
       cpu->AF.byte.flags.z = (signed8Temp == 0);
@@ -563,8 +564,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xC0: // ret nz
       if(cpu->AF.byte.flags.z == 0) {
-        cpu->pc = memory[cpu->sp];
-        unsigned16Temp = ((u16)memory[++cpu->sp] << 8);
+        cpu->pc = memRead(cpu->sp);
+        unsigned16Temp = ((u16)memRead(++cpu->sp) << 8);
         cpu->sp++;
         cpu->pc += unsigned16Temp;
         --cpu->pc;
@@ -577,15 +578,15 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xD1: // pop de
     case 0xE1: // pop hl
     case 0xF1: // pop af
-      *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0] = memory[cpu->sp];
-      *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1] = memory[++cpu->sp];
+      *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0] = memRead(cpu->sp);
+      *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1] = memRead(++cpu->sp);
       cpu->sp++;
       cpu->currentTstate += 10;
       break;
     case 0xC2: // jp nz
       if(cpu->AF.byte.flags.z != 1) {
-        unsigned16Temp = memory[++cpu->pc];
-        cpu->pc = (((u16)memory[++cpu->pc] << 8)) + unsigned16Temp;
+        unsigned16Temp = memRead(++cpu->pc);
+        cpu->pc = (((u16)memRead(++cpu->pc) << 8)) + unsigned16Temp;
         cpu->pc--;
         cpu->currentTstate += 12;
       } else {
@@ -594,8 +595,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0xC3: // jp **
-      unsigned16Temp = memory[++cpu->pc];
-      unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
+      unsigned16Temp = memRead(++cpu->pc);
+      unsigned16Temp += ((u16)memRead(++cpu->pc) << 8);
       cpu->pc = unsigned16Temp;
       --cpu->pc;
       cpu->currentTstate += 10;
@@ -603,11 +604,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xC4: // CALL NZ, **
       if(cpu->AF.byte.flags.z == 0) {
         cpu->pc += 0x3;
-        memory[--cpu->sp] = cpu->pc >> 8;
-        memory[--cpu->sp] = cpu->pc;
+        memWrite(--cpu->sp, (cpu->pc >> 8));
+        memWrite(--cpu->sp, cpu->pc);
         cpu->pc -= 0x2;
-        unsigned16Temp = memory[cpu->pc];
-        cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
+        unsigned16Temp = memRead(cpu->pc);
+        cpu->pc = ((u16)memRead(++cpu->pc) << 8) + unsigned16Temp;
         --cpu->pc;
         cpu->currentTstate += 17;
       } else {
@@ -619,15 +620,15 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xD5: // push de
     case 0xE5: // push hl
     case 0xF5: // push af
-      memory[--cpu->sp] = *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1];
-      memory[--cpu->sp] = *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0];
+      memWrite(--cpu->sp, (*registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1]));
+      memWrite(--cpu->sp, (*registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][0]));
       cpu->currentTstate += 11;
       break;
     case 0xC6: // add a, *
-      unsigned16Temp = (cpu->AF.byte.left + memory[++cpu->pc]);
+      unsigned16Temp = (cpu->AF.byte.left + memRead(++cpu->pc));
       cpu->AF.byte.flags.c = (unsigned16Temp > 255);
       cpu->AF.byte.flags.pv = (unsigned16Temp > 255);
-      signed8Temp = cpu->AF.byte.left + memory[cpu->pc];
+      signed8Temp = cpu->AF.byte.left + memRead(cpu->pc);
       cpu->AF.byte.left = signed8Temp;
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
@@ -645,16 +646,16 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xEF: // rst 28h
     case 0xF7: // rst 30h
     case 0xFF: // rst 38h
-      memory[--cpu->sp] = ++cpu->pc >> 8;
-      memory[--cpu->sp] = cpu->pc;
+      memWrite(--cpu->sp, (++cpu->pc >> 8));
+      memWrite(--cpu->sp, cpu->pc);
       cpu->pc = rstHexLookup[(opcode & 0x38) >> 3];
       cpu->pc--;
       cpu->currentTstate += 11;
       break;
     case 0xC8: // ret z
       if(cpu->AF.byte.flags.z) {
-        cpu->pc = memory[cpu->sp];
-        unsigned16Temp = ((u16)memory[++cpu->sp] << 8);
+        cpu->pc = memRead(cpu->sp);
+        unsigned16Temp = ((u16)memRead(++cpu->sp) << 8);
         cpu->pc += unsigned16Temp;
         cpu->sp++;
         --cpu->pc;
@@ -664,8 +665,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0xC9: // ret
-      cpu->pc = memory[cpu->sp];
-      unsigned16Temp = ((u16)memory[++cpu->sp] << 8);
+      cpu->pc = memRead(cpu->sp);
+      unsigned16Temp = ((u16)memRead(++cpu->sp) << 8);
       cpu->sp++;
       cpu->pc += unsigned16Temp;
       --cpu->pc;
@@ -673,8 +674,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xCA: // jp z, **
       if(cpu->AF.byte.flags.z != 0) {
-        unsigned16Temp = memory[++cpu->pc];
-        cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
+        unsigned16Temp = memRead(++cpu->pc);
+        cpu->pc = ((u16)memRead(++cpu->pc) << 8) + unsigned16Temp;
         cpu->pc--;
         cpu->currentTstate += 12;
       } else {
@@ -683,7 +684,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0xCB: // BIT instruction set
-      extendedOpcode = memory[++cpu->pc];
+      extendedOpcode = memRead(++cpu->pc);
       switch(extendedOpcode) {
         case 0x00: // rlc b
           (*registerHexLookup[(extendedOpcode & 0x07)]) <<= 1;
@@ -705,8 +706,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         {
           u8 tmp = 0x0;
 
-          cpu->AF.byte.flags.c = memory[cpu->HL.pair] & 0x1;
-          signed8Temp = memory[cpu->HL.pair];
+          cpu->AF.byte.flags.c = memRead(cpu->HL.pair) & 0x1;
+          signed8Temp = memRead(cpu->HL.pair);
           tmp = signed8Temp;
           signed8Temp >>= 1;
           signed8Temp += (tmp << 7);
@@ -719,7 +720,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
 
           cpu->AF.byte.flags.s = (signed8Temp < 0);
           cpu->AF.byte.flags.z = (signed8Temp == 0);
-          memory[cpu->HL.pair] = signed8Temp;
+          memWrite(cpu->HL.pair, signed8Temp);
           cpu->currentTstate += 15;
           break;
         }
@@ -833,7 +834,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         case 0x6E: // bit 5, (hl)
         case 0x76: // bit 6, (hl)
         case 0x7E: // bit 7, (hl)
-          cpu->AF.byte.flags.z = (memory[cpu->HL.pair] & bitHexLookup[((extendedOpcode & 0x38) >> 3)]) ? 0 : 1;
+          cpu->AF.byte.flags.z = (memRead(cpu->HL.pair) & bitHexLookup[((extendedOpcode & 0x38) >> 3)]) ? 0 : 1;
           cpu->AF.byte.flags.s = 0; // unknown behaviour, fuse resets s flag here.
           cpu->currentTstate += 20;
           break;
@@ -904,7 +905,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         case 0xAE: // res 5, (hl)
         case 0xB6: // res 6, (hl)
         case 0xBE: // res 7, (hl)
-          memory[(cpu->HL.pair)] &= ~(bitHexLookup[((extendedOpcode & 0x38) >> 3)]);
+          memWrite(cpu->HL.pair, (memRead(cpu->HL.pair) & ~(bitHexLookup[((extendedOpcode & 0x38) >> 3)])));
           cpu->currentTstate += 15;
           break;
         case 0xC0: // set 0, b
@@ -974,7 +975,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         case 0xEE: // set 5, (hl)
         case 0xF6: // set 6, (hl)
         case 0xFE: // set 7, (hl)
-          memory[(cpu->HL.pair)] |= (bitHexLookup[((extendedOpcode & 0x38) >> 3)]);
+          memWrite(cpu->HL.pair, (memRead(cpu->HL.pair) | (bitHexLookup[((extendedOpcode & 0x38) >> 3)])));
           cpu->currentTstate += 15;
           break;
         default:
@@ -998,17 +999,17 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xCD: // CALL **
       cpu->pc += 0x3;
-      memory[--cpu->sp] = cpu->pc >> 8;
-      memory[--cpu->sp] = cpu->pc;
+      memWrite(--cpu->sp, (cpu->pc >> 8));
+      memWrite(--cpu->sp, cpu->pc);
       cpu->pc -= 0x2;
-      unsigned16Temp = memory[cpu->pc];
-      cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
+      unsigned16Temp = memRead(cpu->pc);
+      cpu->pc = ((u16)memRead(++cpu->pc) << 8) + unsigned16Temp;
       --cpu->pc;
       cpu->currentTstate += 17;
       break;
     case 0xCE: // adc a, *
-      signed16Temp = (cpu->AF.byte.left + memory[++cpu->pc] + cpu->AF.byte.flags.c);
-      cpu->AF.byte.left += (memory[cpu->pc] + cpu->AF.byte.flags.c);
+      signed16Temp = (cpu->AF.byte.left + memRead(++cpu->pc) + cpu->AF.byte.flags.c);
+      cpu->AF.byte.left += (memRead(cpu->pc) + cpu->AF.byte.flags.c);
       cpu->AF.byte.flags.c = (signed16Temp > 255);
       cpu->AF.byte.flags.pv = (signed16Temp > 255);
       cpu->AF.byte.flags.s = (signed16Temp < 0);
@@ -1020,8 +1021,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xD0: // ret nc
       if(cpu->AF.byte.flags.c == 0) {
-        cpu->pc = memory[cpu->sp];
-        unsigned16Temp = ((u16)memory[++cpu->sp] << 8);
+        cpu->pc = memRead(cpu->sp);
+        unsigned16Temp = ((u16)memRead(++cpu->sp) << 8);
         cpu->sp++;
         cpu->pc += unsigned16Temp;
         --cpu->pc;
@@ -1032,8 +1033,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xD2: // jp nc
       if(cpu->AF.byte.flags.c == 0) {
-        unsigned16Temp = memory[++cpu->pc];
-        cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
+        unsigned16Temp = memRead(++cpu->pc);
+        cpu->pc = ((u16)memRead(++cpu->pc) << 8) + unsigned16Temp;
         cpu->pc--;
         cpu->currentTstate += 12;
       } else {
@@ -1042,10 +1043,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0xD6: // sub *
-      signed16Temp = (cpu->AF.byte.left - memory[++cpu->pc]);
+      signed16Temp = (cpu->AF.byte.left - memRead(++cpu->pc));
       cpu->AF.byte.flags.c = (signed16Temp < 0);
       cpu->AF.byte.flags.pv = (signed16Temp < 0);
-      signed8Temp = (cpu->AF.byte.left - memory[cpu->pc]);
+      signed8Temp = (cpu->AF.byte.left - memRead(cpu->pc));
 
       cpu->AF.byte.left = signed8Temp;
       cpu->AF.byte.flags.s = (signed8Temp < 0);
@@ -1069,8 +1070,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xDA: // jp c
       if(cpu->AF.byte.flags.c == 1) {
-        unsigned16Temp = memory[++cpu->pc];
-        cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
+        unsigned16Temp = memRead(++cpu->pc);
+        cpu->pc = ((u16)memRead(++cpu->pc) << 8) + unsigned16Temp;
         cpu->pc--;
         cpu->currentTstate += 12;
       } else {
@@ -1084,7 +1085,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->currentTstate += 11;
       break;
     case 0xDD: // IX instruction set
-      extendedOpcode = memory[++cpu->pc];
+      extendedOpcode = memRead(++cpu->pc);
       switch(extendedOpcode) {
         case 0x09: // add ix, bc
           temp = (cpu->IX.pair + cpu->BC.pair);
@@ -1094,15 +1095,15 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           cpu->currentTstate += 15;
           break;
         case 0x21: // ld ix, **
-          cpu->IX.byte[0] = memory[++cpu->pc];
-          cpu->IX.byte[1] = memory[++cpu->pc];
+          cpu->IX.byte[0] = memRead(++cpu->pc);
+          cpu->IX.byte[1] = memRead(++cpu->pc);
           cpu->currentTstate += 14;
           break;
         case 0x22: // ld (**), IX
-          unsigned16Temp = memory[++cpu->pc];
-          unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
-          memory[unsigned16Temp] = cpu->IX.byte[0];
-          memory[unsigned16Temp+1] = cpu->IX.byte[1];
+          unsigned16Temp = memRead(++cpu->pc);
+          unsigned16Temp += ((u16)memRead(++cpu->pc) << 8);
+          memWrite(unsigned16Temp, cpu->IX.byte[0]);
+          memWrite(unsigned16Temp+1, cpu->IX.byte[1]);
           cpu->currentTstate += 20;
           break;
         case 0x23: // inc IX
@@ -1110,10 +1111,10 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           cpu->currentTstate += 10;
           break;
         case 0x2A: // ld IX, (**)
-          unsigned16Temp = memory[++cpu->pc];
-          unsigned16Temp += ((u16)memory[++cpu->pc] << 8);
-          cpu->IX.byte[0] = memory[unsigned16Temp];
-          cpu->IX.byte[1] = memory[unsigned16Temp + 1];
+          unsigned16Temp = memRead(++cpu->pc);
+          unsigned16Temp += ((u16)memRead(++cpu->pc) << 8);
+          cpu->IX.byte[0] = memRead(unsigned16Temp);
+          cpu->IX.byte[1] = memRead(unsigned16Temp + 1);
           cpu->currentTstate += 20;
           break;
         case 0x46: // ld b, (IX+*)
@@ -1123,7 +1124,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         case 0x66: // ld h, (IX+*)
         case 0x6E: // ld l, (IX+*)
         case 0x7E: // ld b, (IX+*)
-          *registerHexLookup[((extendedOpcode & 0x38) >> 3)] = memory[(cpu->IX.pair + memory[++cpu->pc])];
+          *registerHexLookup[((extendedOpcode & 0x38) >> 3)] = memRead((cpu->IX.pair + memRead(++cpu->pc)));
           cpu->currentTstate += 19;
           break;
         case 0x70: // ld (IX+*), b
@@ -1133,12 +1134,12 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
         case 0x74: // ld (IX+*), h
         case 0x75: // ld (IX+*), l
         case 0x77: // ld (IX+*), a
-          memory[(cpu->IX.pair + memory[++cpu->pc])] = *registerHexLookup[(extendedOpcode & 0x07)];
+          memWrite((cpu->IX.pair + memRead(++cpu->pc)), *registerHexLookup[(extendedOpcode & 0x07)]);
           cpu->currentTstate += 19;
           break;
         case 0x96: // sub (IX+*)
-          signed16Temp = (cpu->AF.byte.left - memory[(cpu->IX.pair + memory[++cpu->pc])]);
-          signed8Temp = (cpu->AF.byte.left - memory[(cpu->IX.pair + memory[cpu->pc])]);
+          signed16Temp = (cpu->AF.byte.left - memRead((cpu->IX.pair + memRead(++cpu->pc))));
+          signed8Temp = (cpu->AF.byte.left - memRead((cpu->IX.pair + memRead(cpu->pc))));
 
           cpu->AF.byte.left = signed8Temp;
 
@@ -1152,14 +1153,14 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           cpu->currentTstate += 19;
           break;
         case 0xE1: // pop IX
-          cpu->IX.byte[0] = memory[cpu->sp];
-          cpu->IX.byte[1] = memory[++cpu->sp];
+          cpu->IX.byte[0] = memRead(cpu->sp);
+          cpu->IX.byte[1] = memRead(++cpu->sp);
           cpu->sp++;
           cpu->currentTstate += 14;
           break;
         case 0xE5: // push IX
-          memory[--cpu->sp] = cpu->IX.byte[1];
-          memory[--cpu->sp] = cpu->IX.byte[0];
+          memWrite(--cpu->sp, cpu->IX.byte[1]);
+          memWrite(--cpu->sp, cpu->IX.byte[0]);
           cpu->currentTstate += 15;
           break;
         case 0xE9: // jp ix
@@ -1186,15 +1187,15 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0xE3: // ex (sp), HL
-      unsigned16Temp = memory[cpu->sp];
-      unsigned16Temp += ((u16)memory[(cpu->sp + 1)] << 8);
-      memory[cpu->sp] = cpu->HL.byte[0];
-      memory[(cpu->sp + 1)] = cpu->HL.byte[1];
+      unsigned16Temp = memRead(cpu->sp);
+      unsigned16Temp += ((u16)memRead((cpu->sp + 1)) << 8);
+      memWrite(cpu->sp, cpu->HL.byte[0]);
+      memWrite(cpu->sp + 1, cpu->HL.byte[1]);
       cpu->HL.pair = unsigned16Temp;
       cpu->currentTstate += 4;
       break;
     case 0xE6: // and *
-      signed8Temp = cpu->AF.byte.left & memory[++cpu->pc];
+      signed8Temp = cpu->AF.byte.left & memRead(++cpu->pc);
       cpu->AF.byte.left = signed8Temp;
 
       oneBits = 0;
@@ -1223,7 +1224,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->currentTstate += 4;
       break;
     case 0xED: // Extended instruction set
-      extendedOpcode = memory[++cpu->pc];
+      extendedOpcode = memRead(++cpu->pc);
       int temp;
       switch(extendedOpcode) {
         case 0x42: // sbc hl, bc
@@ -1245,26 +1246,26 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           cpu->currentTstate += 4;
           break;
         case 0x43: // ld (**), bc
-          unsigned16Temp = memory[++cpu->pc];
-          unsigned16Temp += memory[++cpu->pc] << 8;
-          memory[unsigned16Temp] = cpu->BC.byte[0];
-          memory[unsigned16Temp+1] = cpu->BC.byte[1];
+          unsigned16Temp = memRead(++cpu->pc);
+          unsigned16Temp += memRead(++cpu->pc) << 8;
+          memWrite(unsigned16Temp, cpu->BC.byte[0]);
+          memWrite(unsigned16Temp+1, cpu->BC.byte[1]);
           cpu->currentTstate += 20;
           break;
         case 0x53: // ld (**), de
-          unsigned16Temp = memory[++cpu->pc];
-          unsigned16Temp += memory[++cpu->pc] << 8;
-          memory[unsigned16Temp] = cpu->DE.byte[0];
-          memory[unsigned16Temp+1] = cpu->DE.byte[1];
+          unsigned16Temp = memRead(++cpu->pc);
+          unsigned16Temp += memRead(++cpu->pc) << 8;
+          memWrite(unsigned16Temp, cpu->DE.byte[0]);
+          memWrite(unsigned16Temp+1, cpu->DE.byte[1]);
           cpu->currentTstate += 20;
           break;
         case 0x4B: // ld bc, (**)
         case 0x5B: // ld de, (**)
         case 0x6B: // ld hl, (**)
-          unsigned16Temp = memory[++cpu->pc];
-          unsigned16Temp += memory[++cpu->pc] << 8;
-          *registerPairHexLookupSeparate[((extendedOpcode & 0x30) >> 4)][0] = memory[unsigned16Temp];
-          *registerPairHexLookupSeparate[((extendedOpcode & 0x30) >> 4)][1] = memory[unsigned16Temp + 1];
+          unsigned16Temp = memRead(++cpu->pc);
+          unsigned16Temp += memRead(++cpu->pc) << 8;
+          *registerPairHexLookupSeparate[((extendedOpcode & 0x30) >> 4)][0] = memRead(unsigned16Temp);
+          *registerPairHexLookupSeparate[((extendedOpcode & 0x30) >> 4)][1] = memRead(unsigned16Temp + 1);
           cpu->currentTstate += 20;
           break;
         case 0x78: // in A, (c)
@@ -1274,7 +1275,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           cpu->currentTstate += 11;
           break;
         case 0xB0: // ldir
-          memory[cpu->DE.pair] = memory[cpu->HL.pair];
+          memWrite(cpu->DE.pair, memRead(cpu->HL.pair));
           cpu->HL.pair++;
           cpu->DE.pair++;
           cpu->BC.pair--;
@@ -1310,7 +1311,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0xF6: // or n
-      signed8Temp = cpu->AF.byte.left | memory[++cpu->pc];
+      signed8Temp = cpu->AF.byte.left | memRead(++cpu->pc);
       cpu->AF.byte.left = signed8Temp;
 
       oneBits = 0;
@@ -1328,11 +1329,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       cpu->currentTstate += 7;
       break;
     case 0xFD: // IY instruction set
-      extendedOpcode = memory[++cpu->pc];
+      extendedOpcode = memRead(++cpu->pc);
       switch(extendedOpcode) {
         case 0xBE: // cp a, (IY+d)
-          signed16Temp = (cpu->AF.byte.left - memory[(cpu->IY.pair + memory[++cpu->pc])]);
-          signed8Temp = (cpu->AF.byte.left - memory[(cpu->IY.pair + memory[cpu->pc])]);
+          signed16Temp = (cpu->AF.byte.left - memRead((cpu->IY.pair + memRead(++cpu->pc))));
+          signed8Temp = (cpu->AF.byte.left - memRead((cpu->IY.pair + memRead(cpu->pc))));
 
           cpu->AF.byte.flags.c = (signed16Temp < 0);
           cpu->AF.byte.flags.pv = (signed16Temp < 0);
@@ -1344,8 +1345,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
           cpu->currentTstate += 19;
           break;
         case 0xCB: // IY bit instructions
-          signed8Temp = memory[++cpu->pc];
-          extendedOpcode = memory[++cpu->pc];
+          signed8Temp = memRead(++cpu->pc);
+          extendedOpcode = memRead(++cpu->pc);
           switch(extendedOpcode) {
             case 0x46: // bit 0, (iy**)
             case 0x4E: // bit 1, (iy**)
@@ -1355,7 +1356,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
             case 0x6E: // bit 5, (iy**)
             case 0x76: // bit 6, (iy**)
             case 0x7E: // bit 7, (iy**)
-              cpu->AF.byte.flags.z = (memory[(cpu->IY.pair + signed8Temp)] & bitHexLookup[((extendedOpcode & 0x38) >> 3)]) ? 0 : 1;
+              cpu->AF.byte.flags.z = (memRead((cpu->IY.pair + signed8Temp)) & bitHexLookup[((extendedOpcode & 0x38) >> 3)]) ? 0 : 1;
               cpu->AF.byte.flags.s = 0; // unknown behaviour, fuse resets s flag here.
               cpu->currentTstate += 20;
               break;
@@ -1367,11 +1368,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
             case 0xAE: // res 5, (iy+*)
             case 0xB6: // res 6, (iy+*)
             case 0xBE: // res 7, (iy+*)
-              memory[(cpu->IY.pair + signed8Temp)] &= ~(bitHexLookup[((extendedOpcode & 0x38) >> 3)]);
+              memWrite((cpu->IY.pair + signed8Temp), (memRead((cpu->IY.pair + signed8Temp)) & ~(bitHexLookup[((extendedOpcode & 0x38) >> 3)])));
               cpu->currentTstate += 23;
               break;
             case 0xC6: // set 0, (iy+*)
-              memory[(cpu->IY.pair + signed8Temp)] |= (bitHexLookup[((extendedOpcode & 0x38) >> 3)]);
+              memWrite((cpu->IY.pair + signed8Temp), (memRead((cpu->IY.pair + signed8Temp)) | (bitHexLookup[((extendedOpcode & 0x38) >> 3)])));
               cpu->currentTstate += 23;
               break;
             default:
@@ -1413,11 +1414,11 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
     case 0xCC: // call z, **
       if(cpu->AF.byte.flags.z) {
         cpu->pc += 0x3;
-        memory[--cpu->sp] = cpu->pc >> 8;
-        memory[--cpu->sp] = cpu->pc;
+        memWrite(--cpu->sp, (cpu->pc >> 8));
+        memWrite(--cpu->sp, cpu->pc);
         cpu->pc -= 0x2;
-        unsigned16Temp = memory[cpu->pc];
-        cpu->pc = (memory[++cpu->pc] << 8) + unsigned16Temp;
+        unsigned16Temp = memRead(cpu->pc);
+        cpu->pc = (memRead(++cpu->pc) << 8) + unsigned16Temp;
         --cpu->pc;
         cpu->currentTstate += 17;
       } else {
@@ -1432,8 +1433,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xD8: // ret c
       if(cpu->AF.byte.flags.c == 1) {
-        cpu->pc = memory[cpu->sp];
-        unsigned16Temp = memory[++cpu->sp] << 8;
+        cpu->pc = memRead(cpu->sp);
+        unsigned16Temp = memRead(++cpu->sp) << 8;
         cpu->sp++;
         cpu->pc += unsigned16Temp;
         --cpu->pc;
@@ -1443,7 +1444,7 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       }
       break;
     case 0xEE: // XOR *
-      signed8Temp = cpu->AF.byte.left ^ memory[++cpu->pc];
+      signed8Temp = cpu->AF.byte.left ^ memRead(++cpu->pc);
       cpu->AF.byte.left = signed8Temp;
 
       oneBits = 0;
@@ -1462,8 +1463,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xF2: // jp p, **
       if(cpu->AF.byte.flags.pv == 1) {
-        unsigned16Temp = memory[++cpu->pc];
-        cpu->pc = ((u16)memory[++cpu->pc] << 8) + unsigned16Temp;
+        unsigned16Temp = memRead(++cpu->pc);
+        cpu->pc = ((u16)memRead(++cpu->pc) << 8) + unsigned16Temp;
         cpu->pc--;
         cpu->currentTstate += 12;
       } else {
@@ -1476,8 +1477,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       break;
     case 0xF8: // ret m
       if(cpu->AF.byte.flags.s == 1) {
-        cpu->pc = memory[cpu->sp];
-        unsigned16Temp = memory[++cpu->sp] << 8;
+        cpu->pc = memRead(cpu->sp);
+        unsigned16Temp = memRead(++cpu->sp) << 8;
         cpu->sp++;
         cpu->pc += unsigned16Temp;
         --cpu->pc;
@@ -1490,8 +1491,8 @@ void executeOpcode(Z80* cpu, u8 memory[], u8 opcode) {
       // turns on interrupts again
       break;
     case 0xFE: // cp n
-      signed16Temp = cpu->AF.byte.left - memory[++cpu->pc];
-      signed8Temp = cpu->AF.byte.left - memory[cpu->pc];
+      signed16Temp = cpu->AF.byte.left - memRead(++cpu->pc);
+      signed8Temp = cpu->AF.byte.left - memRead(cpu->pc);
 
       cpu->AF.byte.flags.c = (signed16Temp < 0);
       cpu->AF.byte.flags.pv = (signed16Temp < 0);

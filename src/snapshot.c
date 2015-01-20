@@ -2,9 +2,10 @@
 #include <stdio.h>
 
 #include "snapshot.h"
+#include "memory.h"
 #include "Z80.h"
 
-void loadSnapshot(char *filename, Z80* cpu, u8 memory[]) {
+void loadSnapshot(char *filename, Z80* cpu) {
 	printf("Loading ROM...\n");
 	FILE *fp = NULL;
   if((fp = fopen(filename, "rb")) == NULL) {
@@ -44,8 +45,8 @@ void loadSnapshot(char *filename, Z80* cpu, u8 memory[]) {
   printf(" > Stack pointer: %x\n", cpu->sp);
   printf(" =========================\n");
 
-  loadMemory(fp, memoryBlocksOffset, snapshotSize, memory);
-  loadSpectrum48ROM(memory);
+  loadMemory(fp, memoryBlocksOffset, snapshotSize);
+  loadSpectrum48ROM();
   fclose(fp);
 }
 
@@ -144,22 +145,22 @@ static void loadVersion3Header(FILE* fp, Z80* cpu, int snapshotSize) {
   cpu->currentTstate = (((getNextByte(fp, snapshotSize) + 1) % 4) + 1) * 17472 - lowTstate;
 }
 
-static void loadMemory(FILE* fp, int memoryBlocksOffset, int snapshotSize, u8 memory[]) {
+static void loadMemory(FILE* fp, int memoryBlocksOffset, int snapshotSize) {
 	fseek(fp, memoryBlocksOffset, SEEK_SET);
 
 	if(memoryBlocksOffset == 30) {
-		loadVersion1Memory(fp, snapshotSize, memory);
+		loadVersion1Memory(fp, snapshotSize);
 	} else {
 		while(ftell(fp) < snapshotSize) {
-			fp = loadMemoryBlock(fp, ftell(fp), snapshotSize, memory);
+			fp = loadMemoryBlock(fp, ftell(fp), snapshotSize);
 		}
 	}
 }
 
-static void loadVersion1Memory(FILE* fp, int snapshotSize, u8 memory[]) {
+static void loadVersion1Memory(FILE* fp, int snapshotSize) {
 	fseek(fp, 30, SEEK_SET);
 	u16 blockLength = snapshotSize - 34;
-	u8* memoryPtr = &memory[0x4000];
+	u16 memAddress = 0x4000;
 
   u8 bytes[4] = { 0 };
 
@@ -173,25 +174,25 @@ static void loadVersion1Memory(FILE* fp, int snapshotSize, u8 memory[]) {
         bytes[3] = getNextByte(fp, snapshotSize);
         int j;
         for(j = 0; j < bytes[2]; j++) {
-          *memoryPtr = bytes[3];
-          memoryPtr++;
+          memWrite(memAddress, bytes[3]);
+          memAddress++;
         }
         i+=3;
       } else {
-        *memoryPtr = bytes[0];
-        memoryPtr++;
-        *memoryPtr = bytes[1];
-        memoryPtr++;
+        memWrite(memAddress, bytes[0]);
+        memAddress++;
+        memWrite(memAddress, bytes[1]);
+        memAddress++;
         i++;
       }
     } else {
-      *memoryPtr = bytes[0];
-      memoryPtr++;
+      memWrite(memAddress, bytes[0]);
+      memAddress++;
     }
   }
 }
 
-static FILE* loadMemoryBlock(FILE* fp, int blockStartOffset, int snapshotSize, u8 memory[]) {
+static FILE* loadMemoryBlock(FILE* fp, int blockStartOffset, int snapshotSize) {
 	// Read header.
 	fseek(fp, blockStartOffset, SEEK_SET);
 	u16 blockLength = getNextWord(fp, snapshotSize);
@@ -202,7 +203,7 @@ static FILE* loadMemoryBlock(FILE* fp, int blockStartOffset, int snapshotSize, u
 	u16 pageMapping[12] = {0, 0, 0, 0, 0x8000, 0xc000, 0, 0, 0x4000, 0, 0, 0};
 
 	// Move the memory pointer to the correct place in memory for this page.
-	u8* memoryPtr = &memory[pageMapping[currentPage]];
+	u16 memAddress = pageMapping[currentPage];
 	
 	// We read a maximum of 4 bytes because of compression
   u8 bytes[4] = { 0 };
@@ -217,20 +218,20 @@ static FILE* loadMemoryBlock(FILE* fp, int blockStartOffset, int snapshotSize, u
         bytes[3] = getNextByte(fp, snapshotSize);
         int j;
         for(j = 0; j < bytes[2]; j++) {
-          *memoryPtr = bytes[3];
-          memoryPtr++;
+          memWrite(memAddress, bytes[3]);
+          memAddress++;
         }
         i+=3;
       } else {
-        *memoryPtr = bytes[0];
-        memoryPtr++;
-        *memoryPtr = bytes[1];
-        memoryPtr++;
+        memWrite(memAddress, bytes[0]);
+        memAddress++;
+        memWrite(memAddress, bytes[1]);
+        memAddress++;
         i++;
       }
     } else {
-      *memoryPtr = bytes[0];
-      memoryPtr++;
+      memWrite(memAddress, bytes[0]);
+      memAddress++;
     }
   }
   return fp;
@@ -250,7 +251,7 @@ static int getNextWord(FILE* fp, int snapshotSize) {
   return word;
 }
 
-static void loadSpectrum48ROM(u8 memory[]) {
+static void loadSpectrum48ROM() {
 	FILE* fp = fopen("./roms/48.rom", "rb");
   if(fp == NULL) headerError("Failed to open Spectrum 48Rom program.");
 
@@ -258,7 +259,7 @@ static void loadSpectrum48ROM(u8 memory[]) {
   int monitorByte;
 
   while((monitorByte = fgetc(fp)) != EOF) {
-    memory[ramPointer++] = monitorByte;
+    memWrite(ramPointer++, monitorByte);
   }
 
   fclose(fp);

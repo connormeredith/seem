@@ -1,10 +1,19 @@
-CC=gcc
-CFLAGS=-c -Wall
+CC = gcc
+CFLAGS = -c -Wall
 
-all: emulator
+all:
+	@echo "Error: No target architecture specified.\nChoose 'make x86' or 'make arduino'"
 
-emulator: main.o snapshot.o z80.o display.o
-	$(CC) main.o snapshot.o z80.o display.o -o emulator `sdl2-config --cflags --libs`
+x86: main.o snapshot.o z80.o display.o memory_x86.o
+	$(CC) main.o snapshot.o z80.o display.o memory_x86.o -o emulator `sdl2-config --cflags --libs`
+
+arduino: CC = avr-gcc
+arduino: CFLAGS += -Darduino
+arduino: main.o z80.o
+	$(CC) main.o z80.o -o arduino_emulator
+
+memory_x86.o: src/lib/memory/memory_x86.c src/lib/memory/memory.h
+	$(CC) $(CFLAGS) src/lib/memory/memory_x86.c
 
 main.o: src/main.c src/main.h
 	$(CC) $(CFLAGS) src/main.c

@@ -1,13 +1,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "snapshot.h"
-#include "display.h"
+#ifndef arduino
+  #include "snapshot.h"
+  #include "display.h"
+#endif
+
+#include "lib/memory/memory.h"
 #include "main.h"
 #include "z80.h"
 
 Z80 CPU;
-u8 RAM[0xFFFF] = { 0x00 };
 
 /**
  * Main function.
@@ -21,20 +24,20 @@ int main(int argc, char **argv) {
     return 1;
   } else {
     init(&CPU);
-    initDisplay(RAM);
-    loadSnapshot(argv[1], &CPU, RAM);
-    executeOpcode(&CPU, RAM, RAM[CPU.pc]);
+    initDisplay();
+    loadSnapshot(argv[1], &CPU);
+    executeOpcode(&CPU, memRead(CPU.pc));
     for(;;) {
       u8 opcode;
       if(CPU.currentTstate >= 69888) {
         CPU.currentTstate %= 69888;
         opcode = 0xFF;
-        render(RAM);
+        render();
       } else {
-        opcode = fetchOpcode(&CPU, RAM);
+        opcode = fetchOpcode(&CPU);
       }
       CPU.currentTstate %= 69888;
-      executeOpcode(&CPU, RAM, opcode);
+      executeOpcode(&CPU, opcode);
     }
     return 0;
   }

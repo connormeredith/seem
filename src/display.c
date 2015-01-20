@@ -1,5 +1,6 @@
 #include "SDL2/SDL.h"
 #include "display.h"
+#include "memory.h"
 #include "z80.h"
 
 // ZX Spectrum resolution.
@@ -13,11 +14,11 @@ SDL_Window* window;
  * Initialises the display window.
  * @param memory The ZX Spectrum's memory array.
  */
-void initDisplay(u8 memory[]) {
+void initDisplay() {
   SDL_Init(SDL_INIT_VIDEO);
   window = SDL_CreateWindow("SEEM", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
 
-  render(memory);
+  render();
 }
 
 /**
@@ -25,7 +26,7 @@ void initDisplay(u8 memory[]) {
  * @param memory  The ZX Spectrum's memory array.
  * @param surface A pointer to the window's surface struct.
  */
-void render(u8 memory[]) {
+void render() {
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 	SDL_LockSurface(surface);
 
@@ -46,8 +47,8 @@ void render(u8 memory[]) {
 		rowPointer = actualRow * (surface->pitch / sizeof(unsigned int));
 
 		for(hCount = 0; hCount < 256; hCount++) {
-			displayByte = memory[0x4000 + (hCount >> 3) + (vCount << 5)];
-			attributeByte = memory[0x5800 + ((actualRow >> 3) << 5) + (hCount >> 3)];
+			displayByte = memRead(0x4000 + (hCount >> 3) + (vCount << 5));
+			attributeByte = memRead(0x5800 + ((actualRow >> 3) << 5) + (hCount >> 3));
 			currentPixelBit = 7 - (hCount % 8);
 
 			ptr[rowPointer + hCount] = pixelColor(attributeByte, (displayByte & (1 << currentPixelBit)));

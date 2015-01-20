@@ -49,10 +49,10 @@ struct TAG_Z80 {
 typedef struct TAG_Z80 Z80;
 
 void init(Z80* cpu);
-void debug(Z80*, u8[], int);
+void debug(Z80*, int);
 
 // Processor functions.
-u8 fetchOpcode(Z80*, u8[]);
-void executeOpcode(Z80*, u8[], u8);
+u8 fetchOpcode(Z80*);
+void executeOpcode(Z80*, u8);
 
 #endif
