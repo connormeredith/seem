@@ -1,9 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
 
-#include "lib/memory/memory.h"
+#include "lib/memory.h"
 #include "z80.h"
 #include "main.h"
 
@@ -993,7 +992,6 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           printf("C->%x\n", cpu->AF.byte.flags.c);
           printf("PV->%x\n", cpu->AF.byte.flags.pv);
           printf("Tstate->%i\n", cpu->currentTstate);
-          sleep(10000);
           exit(EXIT_FAILURE);
       }
       break;
@@ -1182,7 +1180,6 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           printf("S->%x\n", cpu->AF.byte.flags.s);
           printf("C->%x\n", cpu->AF.byte.flags.c);
           printf("PV->%x\n", cpu->AF.byte.flags.pv);
-          sleep(10000);
           exit(EXIT_FAILURE);
       }
       break;
@@ -1306,7 +1303,6 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           printf("S->%x\n", cpu->AF.byte.flags.s);
           printf("C->%x\n", cpu->AF.byte.flags.c);
           printf("PV->%x\n", cpu->AF.byte.flags.pv);
-          sleep(10000);
           exit(EXIT_FAILURE);
       }
       break;
@@ -1389,7 +1385,6 @@ void executeOpcode(Z80* cpu, u8 opcode) {
               printf("S->%x\n", cpu->AF.byte.flags.s);
               printf("C->%x\n", cpu->AF.byte.flags.c);
               printf("PV->%x\n", cpu->AF.byte.flags.pv);
-              sleep(10000);
               exit(EXIT_FAILURE);
           }
           break;
@@ -1407,7 +1402,6 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           printf("S->%x\n", cpu->AF.byte.flags.s);
           printf("C->%x\n", cpu->AF.byte.flags.c);
           printf("PV->%x\n", cpu->AF.byte.flags.pv);
-          sleep(10000);
           exit(EXIT_FAILURE);
       }
       break;
@@ -1517,7 +1511,6 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       printf("S->%x\n", cpu->AF.byte.flags.s);
       printf("C->%x\n", cpu->AF.byte.flags.c);
       printf("PV->%x\n", cpu->AF.byte.flags.pv);
-      sleep(10000);
       exit(EXIT_FAILURE);
   }
 }

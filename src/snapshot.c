@@ -2,8 +2,26 @@
 #include <stdio.h>
 
 #include "snapshot.h"
-#include "memory.h"
+#include "lib/memory.h"
 #include "Z80.h"
+
+// Version functions.
+static void loadVersion1Header(FILE*, Z80*, int);
+static void loadVersion2Header(FILE*, Z80*, int);
+static void loadVersion3Header(FILE*, Z80*, int);
+
+// Memory loading functions.
+static void loadMemory(FILE*, int, int);
+static void loadVersion1Memory(FILE*, int);
+static FILE* loadMemoryBlock(FILE*, int, int);
+static void loadSpectrum48ROM();
+
+// Misc snapshot functions.
+static void headerError(char*);
+static int getSnapshotSize(FILE*);
+static u8 getSnapshotVersion(FILE*);
+static int getNextWord(FILE*, int);
+static int getNextByte(FILE*, int);
 
 void loadSnapshot(char *filename, Z80* cpu) {
 	printf("Loading ROM...\n");
@@ -46,7 +64,7 @@ void loadSnapshot(char *filename, Z80* cpu) {
   printf(" =========================\n");
 
   loadMemory(fp, memoryBlocksOffset, snapshotSize);
-  loadSpectrum48ROM();
+  // loadSpectrum48ROM();
   fclose(fp);
 }
 

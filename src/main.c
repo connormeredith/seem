@@ -2,11 +2,11 @@
 #include <stdio.h>
 
 #ifndef arduino
-  #include "snapshot.h"
-  #include "display.h"
+  #include "lib/display.h"
 #endif
 
-#include "lib/memory/memory.h"
+#include "lib/memory.h"
+#include "lib/rom.h"
 #include "main.h"
 #include "z80.h"
 
@@ -24,15 +24,22 @@ int main(int argc, char **argv) {
     return 1;
   } else {
     init(&CPU);
-    initDisplay();
-    loadSnapshot(argv[1], &CPU);
+
+    #ifndef arduino
+      initDisplay();
+      load48KRom();
+      loadSnapshot(argv[1], &CPU);
+    #endif
+
     executeOpcode(&CPU, memRead(CPU.pc));
     for(;;) {
       u8 opcode;
       if(CPU.currentTstate >= 69888) {
         CPU.currentTstate %= 69888;
         opcode = 0xFF;
-        render();
+        #ifndef arduino
+          render();
+        #endif
       } else {
         opcode = fetchOpcode(&CPU);
       }

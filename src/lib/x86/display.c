@@ -1,7 +1,11 @@
+#include <stdint.h>
+
 #include "SDL2/SDL.h"
-#include "display.h"
-#include "memory.h"
-#include "z80.h"
+#include "../display.h"
+#include "../memory.h"
+
+// Private functions.
+static int pixelColor(uint_least8_t attributeByte, uint_least8_t isForeground);
 
 // ZX Spectrum resolution.
 const int WIDTH = 256;
@@ -32,9 +36,9 @@ void render() {
 
 	unsigned int *ptr = (unsigned int*)surface->pixels;
 
-	u8 actualRow, displayByte, attributeByte, currentPixelBit;
+	uint_least8_t actualRow, displayByte, attributeByte, currentPixelBit;
 	int rowPointer;
-	u8 offset = 0;
+	uint_least8_t offset = 0;
 	int vCount;
 
 	for(vCount = 0; vCount < 192; vCount++) {
@@ -65,10 +69,10 @@ void render() {
  * @param  isForeground  Whether or not the pixel is to use the foreground or background color.
  * @return               The color of the pixel in hex.
  */
-int pixelColor(u8 attributeByte, u8 isForeground) {
+static int pixelColor(uint_least8_t attributeByte, uint_least8_t isForeground) {
 	// Converts the 3 color bits of an attribute byte into hex depending on their value.
 	static int spectrumColor[8] = { 0x00, 0xFF, 0xFF0000, 0xFF00FF, 0xFF00, 0xFFFF, 0xFFFF00, 0xFFFFFF };
 
-	u8 colorByte = (isForeground) ? (attributeByte & 0x7) : ((attributeByte & 0x38) >> 3);
+	uint_least8_t colorByte = (isForeground) ? (attributeByte & 0x7) : ((attributeByte & 0x38) >> 3);
 	return spectrumColor[colorByte];
 }

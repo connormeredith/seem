@@ -1,6 +1,8 @@
 *.DS_Store
 *.o
+*.elf
+*.hex
 *.sublime-workspace
 *.sublime-project
-emulator
+seem
 /roms

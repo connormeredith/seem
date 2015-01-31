@@ -1,31 +1,51 @@
-CC = gcc
-CFLAGS = -c -Wall
+# Arduino vars:
+DEVICE = atmega2560
+CLOCK = 16000000
+ARDUINO_OBJECTS = main.o z80.o
+ARDUINO_LIB_OBJECTS = memory.o
 
-all:
-	@echo "Error: No target architecture specified.\nChoose 'make x86' or 'make arduino'"
+# x86 vars:
+X86_OBJECTS = main.o z80.o snapshot.o
+X86_LIB_OBJECTS = memory.o display.o rom.o
 
-x86: main.o snapshot.o z80.o display.o memory_x86.o
-	$(CC) main.o snapshot.o z80.o display.o memory_x86.o -o emulator `sdl2-config --cflags --libs`
 
-arduino: CC = avr-gcc
-arduino: CFLAGS += -Darduino
-arduino: main.o z80.o
-	$(CC) main.o z80.o -o arduino_emulator
+# General vars:
+LIB_PATH = src/lib
 
-memory_x86.o: src/lib/memory/memory_x86.c src/lib/memory/memory.h
-	$(CC) $(CFLAGS) src/lib/memory/memory_x86.c
+# Architecture selection (defaults to x86)
+ifeq ($(ARCH),arduino)
+	CC = avr-gcc
+	CFLAGS = -Wall -Darduino -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
+	LIB_OBJECTS = $(ARDUINO_LIB_OBJECTS)
+	OBJECTS = $(ARDUINO_OBJECTS)
+else
+	ARCH = x86
+	CC = gcc
+	CFLAGS = -Wall
+	LIB_OBJECTS = $(X86_LIB_OBJECTS)
+	OBJECTS = $(X86_OBJECTS)
+	LIB_FLAGS = `sdl2-config --cflags --libs`
+endif
 
-main.o: src/main.c src/main.h
-	$(CC) $(CFLAGS) src/main.c
+all: clean $(OBJECTS) $(LIB_OBJECTS)
+	$(CC) $(CFLAGS) $(OBJECTS) $(LIB_OBJECTS) -o seem $(LIB_FLAGS)
 
-snapshot.o: src/snapshot.c src/snapshot.h
-	$(CC) $(CFLAGS) src/snapshot.c
+%.o: src/%.c src/%.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
-z80.o: src/z80.c src/z80.h
-	$(CC) $(CFLAGS) src/z80.c
+# Arduino builds:
+arduino.elf: $(ARDUINO_OBJECTS)
+	$(CC) $(CFLAGS) -o main.elf main.o z80.o memory_ar.o
 
-display.o: src/display.c src/display.h
-	$(CC) $(CFLAGS) src/display.c
+arduino: COMPILER = $(ARDUINO_CC)
+arduino: clean arduino.elf
+	avr-objcopy -j .text -j .data -O ihex main.elf main.hex
+	avr-size --format=avr --mcu=$(DEVICE) main.elf
 
+# Shared library objects:
+$(LIB_OBJECTS): %.o: $(LIB_PATH)/$(ARCH)/%.c $(LIB_PATH)/%.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Other:
 clean:
-	rm -rf *o emulator
+	rm -f *.o *.elf *.hex seem

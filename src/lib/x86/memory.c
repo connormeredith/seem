@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "memory.h"
+#include "../memory.h"
 
 uint_least8_t spectrum48Memory[0xFFFF];
 
