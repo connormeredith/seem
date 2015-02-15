@@ -36,6 +36,8 @@ void init(Z80* cpu) {
   registerPairHexLookupSeparate[2][1] = &cpu->HL.byte[1];
   registerPairHexLookupSeparate[3][0] = &cpu->AF.byte.flags.all;
   registerPairHexLookupSeparate[3][1] = &cpu->AF.byte.left;
+
+  cpu->maskableIntEnabled = 1;
 }
 
 void debug(Z80* cpu, int quit) {
@@ -53,6 +55,7 @@ void debug(Z80* cpu, int quit) {
   printf("S->%x\n", cpu->AF.byte.flags.s);
   printf("C->%x\n", cpu->AF.byte.flags.c);
   printf("PV->%x\n", cpu->AF.byte.flags.pv);
+  printf("Tstate->%i\n", cpu->currentTstate);
   if(quit == 1) {
     exit(EXIT_FAILURE);
   }
@@ -66,6 +69,35 @@ void debug(Z80* cpu, int quit) {
  */
 u8 fetchOpcode(Z80* cpu) {
   return memRead(++cpu->pc);
+}
+
+static u8 checkSubtractOverflow(s8 operand1, s8 operand2, s16 result) {
+  if(!(operand1 & (1<<7)) && (operand2 & (1<<7)) && (result & (1<<7))) {
+    return 1;
+  } else if((operand1 & (1<<7)) && !(operand2 & (1<<7)) && !(result & (1<<7))) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+static u8 checkAdditionOverflow(s8 operand1, s8 operand2, s16 result) {
+  if(!(operand1 & (1<<7)) && !(operand2 & (1<<7)) && (result & (1<<7))) {
+    return 1;
+  } else if((operand1 & (1<<7)) && (operand2 & (1<<7)) && !(result & (1<<7))) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+static u8 checkParity(u8 operand) {
+  u8 parityBits = 0;
+  s8 bitCounter = 7;
+  for(bitCounter = 7; bitCounter >= 0; bitCounter--) {
+    parityBits += (operand & (1 << bitCounter)) >> bitCounter;
+  }
+  return !(parityBits % 2);
 }
 
 /**
@@ -83,9 +115,9 @@ void executeOpcode(Z80* cpu, u8 opcode) {
   u8 oneBits;
   s8 bits;
 
-  // printf("---- PC::%x - OP::%x\n", cpu->pc, opcode);
+  printf("---- PC::%x - OP::%x - tstate::%i\n", cpu->pc, opcode, cpu->currentTstate);
 
-  // debug(cpu, memory, 0);
+  // debug(cpu, 0);
 
 
   switch(opcode) {
@@ -273,6 +305,17 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       memWrite(unsigned16Temp, cpu->AF.byte.left);
       cpu->currentTstate += 13;
       break;
+    case 0x35: // dec (hl)
+      cpu->AF.byte.flags.pv = (memRead(cpu->HL.pair) == 0x80);
+      signed8Temp = (memRead(cpu->HL.pair));
+      signed8Temp--;
+      memWrite(cpu->HL.pair, signed8Temp);
+
+      cpu->AF.byte.flags.s = (signed8Temp < 0);
+      cpu->AF.byte.flags.z = (signed8Temp == 0);
+      cpu->AF.byte.flags.n = 1;
+      cpu->currentTstate += 4;
+      break;
     case 0x36: // ld (hl), *
       memWrite(cpu->HL.pair, memRead(++cpu->pc));
       cpu->currentTstate += 10;
@@ -303,6 +346,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0x3F: // ccf
       cpu->AF.byte.flags.c = !(cpu->AF.byte.flags.c);
       cpu->AF.byte.flags.n = 0;
+      cpu->currentTstate += 4;
       break;
     case 0x40: // ld b, b
     case 0x41: // ld b, c
@@ -383,9 +427,10 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0x84: // add a, h
     case 0x85: // add a, l
     case 0x87: // add a, a
-      unsigned16Temp = (cpu->AF.byte.left + *registerHexLookup[(opcode & 0x07)]);
-      cpu->AF.byte.flags.c = (unsigned16Temp > 255);
-      cpu->AF.byte.flags.pv = (unsigned16Temp > 255);
+      signed16Temp = (cpu->AF.byte.left + *registerHexLookup[(opcode & 0x07)]);
+      cpu->AF.byte.flags.c = (signed16Temp > 255);
+      cpu->AF.byte.flags.pv = checkAdditionOverflow(cpu->AF.byte.left, *registerHexLookup[(opcode & 0x07)], signed16Temp);
+
       signed8Temp = cpu->AF.byte.left + *registerHexLookup[(opcode & 0x07)];
 
       cpu->AF.byte.left = signed8Temp;
@@ -405,7 +450,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0x97: // sub a, a
       signed16Temp = (cpu->AF.byte.left - *registerHexLookup[(opcode & 0x07)]);
       cpu->AF.byte.flags.c = (signed16Temp < 0);
-      cpu->AF.byte.flags.pv = (signed16Temp < 0);
+      cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->AF.byte.left, *registerHexLookup[(opcode & 0x07)], signed16Temp);
       signed8Temp = cpu->AF.byte.left - *registerHexLookup[(opcode & 0x07)];
 
       cpu->AF.byte.left = signed8Temp;
@@ -429,7 +474,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       signed8Temp = (cpu->AF.byte.left - *registerHexLookup[(opcode & 0x07)] - cpu->AF.byte.flags.c);
 
       cpu->AF.byte.flags.c = (signed16Temp < 0);
-      cpu->AF.byte.flags.pv = (signed16Temp < 0);
+      cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->AF.byte.left, *registerHexLookup[(opcode & 0x07)], signed16Temp);
 
       cpu->AF.byte.left = signed8Temp;
       cpu->AF.byte.flags.s = (signed8Temp < 0);
@@ -448,12 +493,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0xA7: // AND a
       signed8Temp = cpu->AF.byte.left & *registerHexLookup[(opcode & 0x07)];
       cpu->AF.byte.left = signed8Temp;
-
-      oneBits = 0;
-      for(bits = 7; bits <= 0; bits--) {
-        oneBits += (cpu->AF.byte.left & (1<<bits));
-      }
-      cpu->AF.byte.flags.pv = !(oneBits % 2);
+      cpu->AF.byte.flags.pv = checkParity(cpu->AF.byte.left);
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
       cpu->AF.byte.flags.z = (signed8Temp == 0);
@@ -472,11 +512,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       signed8Temp = cpu->AF.byte.left ^ *registerHexLookup[(opcode & 0x07)];
       cpu->AF.byte.left = signed8Temp;
 
-      oneBits = 0;
-      for(bits = 7; bits <= 0; bits--) {
-        oneBits += (cpu->AF.byte.left & (1<<bits));
-      }
-      cpu->AF.byte.flags.pv = !(oneBits % 2);
+      cpu->AF.byte.flags.pv = checkParity(cpu->AF.byte.left);
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
       cpu->AF.byte.flags.z = (signed8Temp == 0);
@@ -490,11 +526,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       signed8Temp = cpu->AF.byte.left ^ memRead(cpu->HL.pair);
       cpu->AF.byte.left = signed8Temp;
 
-      oneBits = 0;
-      for(bits = 7; bits <= 0; bits--) {
-        oneBits += (cpu->AF.byte.left & (1<<bits));
-      }
-      cpu->AF.byte.flags.pv = !(oneBits % 2);
+      cpu->AF.byte.flags.pv = checkParity(cpu->AF.byte.left);
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
       cpu->AF.byte.flags.z = (signed8Temp == 0);
@@ -511,14 +543,11 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0xB4: // Or h
     case 0xB5: // Or l
     case 0xB7: // Or a
+      // INCORRECT PARITY FLAG - 0x42
       signed8Temp = cpu->AF.byte.left | *registerHexLookup[(opcode & 0x07)];
       cpu->AF.byte.left = signed8Temp;
 
-      oneBits = 0;
-      for(bits = 7; bits <= 0; bits--) {
-        oneBits += (cpu->AF.byte.left & (1<<bits));
-      }
-      cpu->AF.byte.flags.pv = !(oneBits % 2);
+      cpu->AF.byte.flags.pv = checkParity(cpu->AF.byte.left);
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
       cpu->AF.byte.flags.z = (signed8Temp == 0);
@@ -537,7 +566,8 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0xBF: // cp a
       signed16Temp = (cpu->AF.byte.left - *registerHexLookup[(opcode & 0x07)]);
       cpu->AF.byte.flags.c = (signed16Temp < 0);
-      cpu->AF.byte.flags.pv = (signed16Temp < 0);
+
+      cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->AF.byte.left, *registerHexLookup[(opcode & 0x07)], signed16Temp);
       signed8Temp = (cpu->AF.byte.left - *registerHexLookup[(opcode & 0x07)]);
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
@@ -550,7 +580,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0xBE: // cp (hl)
       signed16Temp = (cpu->AF.byte.left - memRead(cpu->HL.pair));
       cpu->AF.byte.flags.c = (signed16Temp < 0);
-      cpu->AF.byte.flags.pv = (signed16Temp < 0);
+      cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->AF.byte.left, memRead(cpu->HL.pair), signed16Temp);
       signed8Temp = (cpu->AF.byte.left - memRead(cpu->HL.pair));
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
@@ -559,7 +589,6 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       // cpu->AF.flags.pv = (is set if overflow)
       cpu->AF.byte.flags.n = 1;
       cpu->currentTstate += 4;
-      break;
       break;
     case 0xC0: // ret nz
       if(cpu->AF.byte.flags.z == 0) {
@@ -624,9 +653,9 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       cpu->currentTstate += 11;
       break;
     case 0xC6: // add a, *
-      unsigned16Temp = (cpu->AF.byte.left + memRead(++cpu->pc));
-      cpu->AF.byte.flags.c = (unsigned16Temp > 255);
-      cpu->AF.byte.flags.pv = (unsigned16Temp > 255);
+      signed16Temp = (cpu->AF.byte.left + memRead(++cpu->pc));
+      cpu->AF.byte.flags.c = (signed16Temp > 255);
+      cpu->AF.byte.flags.pv = checkAdditionOverflow(cpu->AF.byte.left, memRead(cpu->pc), signed16Temp);
       signed8Temp = cpu->AF.byte.left + memRead(cpu->pc);
       cpu->AF.byte.left = signed8Temp;
 
@@ -686,20 +715,17 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       extendedOpcode = memRead(++cpu->pc);
       switch(extendedOpcode) {
         case 0x00: // rlc b
-          (*registerHexLookup[(extendedOpcode & 0x07)]) <<= 1;
           cpu->AF.byte.flags.c = (*registerHexLookup[(extendedOpcode & 0x07)] & 0x80) >> 7;
+          (*registerHexLookup[(extendedOpcode & 0x07)]) <<= 1;
+          
           (*registerHexLookup[(extendedOpcode & 0x07)]) += (cpu->AF.byte.flags.c);
 
-          oneBits = 0;
-          for(bits = 7; bits <= 0; bits--) {
-            oneBits += ((*registerHexLookup[(extendedOpcode & 0x07)]) & (1<<bits));
-          }
-          cpu->AF.byte.flags.pv = !(oneBits % 2);
+          cpu->AF.byte.flags.pv = checkParity(*registerHexLookup[(extendedOpcode & 0x07)]);
           
           signed8Temp = *registerHexLookup[(extendedOpcode & 0x07)];
           cpu->AF.byte.flags.s = (signed8Temp < 0);
           cpu->AF.byte.flags.z = (signed8Temp == 0);
-          cpu->currentTstate += 15;
+          cpu->currentTstate += 8;
           break;
         case 0x0E: // rrc (hl)
         {
@@ -711,11 +737,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           signed8Temp >>= 1;
           signed8Temp += (tmp << 7);
 
-          oneBits = 0;
-          for(bits = 7; bits <= 0; bits--) {
-            oneBits += (signed8Temp & (1<<bits));
-          }
-          cpu->AF.byte.flags.pv = !(oneBits % 2);
+          cpu->AF.byte.flags.pv = checkParity(signed8Temp);
 
           cpu->AF.byte.flags.s = (signed8Temp < 0);
           cpu->AF.byte.flags.z = (signed8Temp == 0);
@@ -732,11 +754,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
         case 0x2F: // sra a
           *registerHexLookup[(extendedOpcode & 0x07)] >>= 1;
 
-          oneBits = 0;
-          for(bits = 7; bits <= 0; bits--) {
-            oneBits += (*registerHexLookup[(extendedOpcode & 0x07)] & (1<<bits));
-          }
-          cpu->AF.byte.flags.pv = !(oneBits % 2);
+          cpu->AF.byte.flags.pv = checkParity(*registerHexLookup[(extendedOpcode & 0x07)]);
 
           cpu->AF.byte.flags.c = *registerHexLookup[(extendedOpcode & 0x07)] & 1;
           cpu->AF.byte.flags.s = 0;
@@ -754,11 +772,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           cpu->AF.byte.flags.c = *registerHexLookup[(extendedOpcode & 0x07)] & 1;
           *registerHexLookup[(extendedOpcode & 0x07)] >>= 1;
 
-          oneBits = 0;
-          for(bits = 7; bits <= 0; bits--) {
-            oneBits += (*registerHexLookup[(extendedOpcode & 0x07)] & (1<<bits));
-          }
-          cpu->AF.byte.flags.pv = !(oneBits % 2);
+          cpu->AF.byte.flags.pv = checkParity(*registerHexLookup[(extendedOpcode & 0x07)]);
 
           cpu->AF.byte.flags.s = 0;
           cpu->AF.byte.flags.n = 0;
@@ -835,7 +849,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
         case 0x7E: // bit 7, (hl)
           cpu->AF.byte.flags.z = (memRead(cpu->HL.pair) & bitHexLookup[((extendedOpcode & 0x38) >> 3)]) ? 0 : 1;
           cpu->AF.byte.flags.s = 0; // unknown behaviour, fuse resets s flag here.
-          cpu->currentTstate += 20;
+          cpu->currentTstate += 12;
           break;
         case 0x80: // res 0, b
         case 0x88: // res 1, b
@@ -1009,7 +1023,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       signed16Temp = (cpu->AF.byte.left + memRead(++cpu->pc) + cpu->AF.byte.flags.c);
       cpu->AF.byte.left += (memRead(cpu->pc) + cpu->AF.byte.flags.c);
       cpu->AF.byte.flags.c = (signed16Temp > 255);
-      cpu->AF.byte.flags.pv = (signed16Temp > 255);
+      cpu->AF.byte.flags.pv = checkAdditionOverflow(cpu->AF.byte.left, (memRead(cpu->pc) + cpu->AF.byte.flags.c), signed16Temp);
       cpu->AF.byte.flags.s = (signed16Temp < 0);
       cpu->AF.byte.flags.z = (cpu->AF.byte.left == 0);
       // cpu->AF.flags.h = (is set if carry from bit 3)
@@ -1043,7 +1057,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0xD6: // sub *
       signed16Temp = (cpu->AF.byte.left - memRead(++cpu->pc));
       cpu->AF.byte.flags.c = (signed16Temp < 0);
-      cpu->AF.byte.flags.pv = (signed16Temp < 0);
+      cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->AF.byte.left, memRead(cpu->pc), signed16Temp);
       signed8Temp = (cpu->AF.byte.left - memRead(cpu->pc));
 
       cpu->AF.byte.left = signed8Temp;
@@ -1139,10 +1153,10 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           signed16Temp = (cpu->AF.byte.left - memRead((cpu->IX.pair + memRead(++cpu->pc))));
           signed8Temp = (cpu->AF.byte.left - memRead((cpu->IX.pair + memRead(cpu->pc))));
 
+          cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->AF.byte.left, memRead((cpu->IX.pair + memRead(cpu->pc))), signed16Temp);
           cpu->AF.byte.left = signed8Temp;
 
           cpu->AF.byte.flags.c = (signed16Temp < 0);
-          cpu->AF.byte.flags.pv = (signed16Temp < 0);
           cpu->AF.byte.flags.s = (signed8Temp < 0);
           cpu->AF.byte.flags.z = (signed8Temp == 0);
           // cpu->AF.byte.flags.h = 0; (is set if borrow from bit 4 otherwise reset)
@@ -1195,11 +1209,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       signed8Temp = cpu->AF.byte.left & memRead(++cpu->pc);
       cpu->AF.byte.left = signed8Temp;
 
-      oneBits = 0;
-      for(bits = 7; bits <= 0; bits--) {
-        oneBits += (cpu->AF.byte.left & (1<<bits));
-      }
-      cpu->AF.byte.flags.pv = !(oneBits % 2);
+      cpu->AF.byte.flags.pv = checkParity(cpu->AF.byte.left);
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
       cpu->AF.byte.flags.z = (signed8Temp == 0);
@@ -1222,6 +1232,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       break;
     case 0xED: // Extended instruction set
       extendedOpcode = memRead(++cpu->pc);
+      cpu->currentTstate += 1;
       int temp;
       switch(extendedOpcode) {
         case 0x42: // sbc hl, bc
@@ -1232,7 +1243,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           signed16Temp = cpu->HL.pair - *registerPairHexLookup[(extendedOpcode & 0x30) >> 4] - cpu->AF.byte.flags.c;
           temp -= cpu->AF.byte.flags.c;
           cpu->AF.byte.flags.c = (temp < 0);
-          cpu->AF.byte.flags.pv = (temp < 0);
+          cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->HL.pair, (*registerPairHexLookup[(extendedOpcode & 0x30) >> 4] - cpu->AF.byte.flags.c), temp);
           cpu->HL.pair = signed16Temp;
 
           cpu->AF.byte.flags.s = (signed16Temp < 0);
@@ -1249,12 +1260,19 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           memWrite(unsigned16Temp+1, cpu->BC.byte[1]);
           cpu->currentTstate += 20;
           break;
+        case 0x47: // ld a, i
+          cpu->I = cpu->AF.byte.left;
+          cpu->currentTstate += 9;
         case 0x53: // ld (**), de
           unsigned16Temp = memRead(++cpu->pc);
           unsigned16Temp += memRead(++cpu->pc) << 8;
           memWrite(unsigned16Temp, cpu->DE.byte[0]);
           memWrite(unsigned16Temp+1, cpu->DE.byte[1]);
           cpu->currentTstate += 20;
+          break;
+        case 0x56: // IM 1
+          // implement later
+          cpu->currentTstate += 8;
           break;
         case 0x4B: // ld bc, (**)
         case 0x5B: // ld de, (**)
@@ -1263,6 +1281,12 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           unsigned16Temp += memRead(++cpu->pc) << 8;
           *registerPairHexLookupSeparate[((extendedOpcode & 0x30) >> 4)][0] = memRead(unsigned16Temp);
           *registerPairHexLookupSeparate[((extendedOpcode & 0x30) >> 4)][1] = memRead(unsigned16Temp + 1);
+          cpu->currentTstate += 20;
+          break;
+        case 0x73: // ld (**), sp
+          unsigned16Temp = memRead(++cpu->pc);
+          unsigned16Temp += memRead(++cpu->pc) << 8;
+          memWrite(unsigned16Temp, cpu->sp);
           cpu->currentTstate += 20;
           break;
         case 0x78: // in A, (c)
@@ -1275,6 +1299,24 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           memWrite(cpu->DE.pair, memRead(cpu->HL.pair));
           cpu->HL.pair++;
           cpu->DE.pair++;
+          cpu->BC.pair--;
+
+          cpu->AF.byte.flags.h = 0;
+          cpu->AF.byte.flags.pv = 0;
+          cpu->AF.byte.flags.n = 0;
+
+          // Repeat instruction if BC is not zero
+          if(cpu->BC.pair != 0) {
+            cpu->pc -= 2;
+            cpu->currentTstate += 21;
+          } else {
+            cpu->currentTstate += 16;
+          }
+          break;
+        case 0xB8: // lddr
+          memWrite(cpu->DE.pair, memRead(cpu->HL.pair));
+          cpu->HL.pair--;
+          cpu->DE.pair--;
           cpu->BC.pair--;
 
           cpu->AF.byte.flags.h = 0;
@@ -1310,11 +1352,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       signed8Temp = cpu->AF.byte.left | memRead(++cpu->pc);
       cpu->AF.byte.left = signed8Temp;
 
-      oneBits = 0;
-      for(bits = 7; bits <= 0; bits--) {
-        oneBits += (cpu->AF.byte.left & (1<<bits));
-      }
-      cpu->AF.byte.flags.pv = !(oneBits % 2);
+      cpu->AF.byte.flags.pv = checkParity(cpu->AF.byte.left);
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
       cpu->AF.byte.flags.z = (signed8Temp == 0);
@@ -1327,12 +1365,67 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0xFD: // IY instruction set
       extendedOpcode = memRead(++cpu->pc);
       switch(extendedOpcode) {
+        case 0x21: // ld IY, **
+          cpu->IY.byte[0] = memRead(++cpu->pc);
+          cpu->IY.byte[1] = memRead(++cpu->pc);
+          cpu->currentTstate += 14;
+          break;
+        case 0x35: // dec (IY+*)
+          signed8Temp = (memRead((cpu->IY.pair + memRead(++cpu->pc))));
+          cpu->AF.byte.flags.pv = (signed8Temp == 0x80);
+          signed8Temp--;
+          memWrite((cpu->IY.pair + memRead(cpu->pc)), signed8Temp);
+
+          cpu->AF.byte.flags.s = (signed8Temp < 0);
+          cpu->AF.byte.flags.z = (signed8Temp == 0);
+          cpu->AF.byte.flags.n = 1;
+          cpu->currentTstate += 23;
+          break;
+        case 0x36: // ld (IY+*), *
+          memWrite((cpu->IY.pair + memRead(++cpu->pc)), memRead(++cpu->pc));
+          cpu->currentTstate += 19;
+          break;
+        case 0x46: // ld b, (IY+*)
+        case 0x4E: // ld c, (IY+*)
+        case 0x56: // ld d, (IY+*)
+        case 0x5E: // ld e, (IY+*)
+        case 0x66: // ld h, (IY+*)
+        case 0x6E: // ld l, (IY+*)
+        case 0x7E: // ld a, (IY+*)
+          *registerHexLookup[((extendedOpcode & 0x38) >> 3)] = memRead((cpu->IY.pair + memRead(++cpu->pc)));
+          cpu->currentTstate += 19;
+          break;
+        case 0x70: // ld (IY+*), b
+        case 0x71: // ld (IY+*), c
+        case 0x72: // ld (IY+*), d
+        case 0x73: // ld (IY+*), e
+        case 0x74: // ld (IY+*), h
+        case 0x75: // ld (IY+*), l
+        case 0x77: // ld (IY+*), a
+          memWrite((cpu->IY.pair + memRead(++cpu->pc)), *registerHexLookup[(extendedOpcode & 0x07)]);
+          cpu->currentTstate += 19;
+          break;
+        case 0x86: // add a, (IY+*)
+          signed16Temp = (cpu->AF.byte.left + memRead(cpu->IY.pair + memRead(++cpu->pc)));
+          cpu->AF.byte.flags.c = (signed16Temp > 255);
+          cpu->AF.byte.flags.pv = checkAdditionOverflow(cpu->AF.byte.left, memRead(cpu->IY.pair + memRead(cpu->pc)), signed16Temp);
+
+          signed8Temp = cpu->AF.byte.left + memRead(cpu->IY.pair + memRead(cpu->pc));
+
+          cpu->AF.byte.left = signed8Temp;
+          cpu->AF.byte.flags.s = (signed8Temp < 0);
+          cpu->AF.byte.flags.z = (signed8Temp == 0);
+          // cpu->AF.flags.h = (is set when carry from bit 3)
+          // cpu->AF.flags.pv = (is set if overflow)
+          cpu->AF.byte.flags.n = 0;
+          cpu->currentTstate += 19;
+          break;
         case 0xBE: // cp a, (IY+d)
           signed16Temp = (cpu->AF.byte.left - memRead((cpu->IY.pair + memRead(++cpu->pc))));
           signed8Temp = (cpu->AF.byte.left - memRead((cpu->IY.pair + memRead(cpu->pc))));
 
           cpu->AF.byte.flags.c = (signed16Temp < 0);
-          cpu->AF.byte.flags.pv = (signed16Temp < 0);
+          cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->AF.byte.left, memRead((cpu->IY.pair + memRead(cpu->pc))), signed16Temp);
           cpu->AF.byte.flags.s = (signed8Temp < 0);
           cpu->AF.byte.flags.z = (signed8Temp == 0);
           // cpu->AF.byte.flags.h = 0; (is set if borrow from bit 4 otherwise reset)
@@ -1368,6 +1461,13 @@ void executeOpcode(Z80* cpu, u8 opcode) {
               cpu->currentTstate += 23;
               break;
             case 0xC6: // set 0, (iy+*)
+            case 0xCE: // set 1, (iy+*)
+            case 0xD6: // set 2, (iy+*)
+            case 0xDE: // set 3, (iy+*)
+            case 0xE6: // set 4, (iy+*)
+            case 0xEE: // set 5, (iy+*)
+            case 0xF6: // set 6, (iy+*)
+            case 0xFE: // set 7, (iy+*)
               memWrite((cpu->IY.pair + signed8Temp), (memRead((cpu->IY.pair + signed8Temp)) | (bitHexLookup[((extendedOpcode & 0x38) >> 3)])));
               cpu->currentTstate += 23;
               break;
@@ -1441,11 +1541,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       signed8Temp = cpu->AF.byte.left ^ memRead(++cpu->pc);
       cpu->AF.byte.left = signed8Temp;
 
-      oneBits = 0;
-      for(bits = 7; bits <= 0; bits--) {
-        oneBits += (cpu->AF.byte.left & (1<<bits));
-      }
-      cpu->AF.byte.flags.pv = !(oneBits % 2);
+      cpu->AF.byte.flags.pv = checkParity(cpu->AF.byte.left);
 
       cpu->AF.byte.flags.s = (signed8Temp < 0);
       cpu->AF.byte.flags.z = (signed8Temp == 0);
@@ -1456,7 +1552,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       cpu->currentTstate += 7;
       break;
     case 0xF2: // jp p, **
-      if(cpu->AF.byte.flags.pv == 1) {
+      if(cpu->AF.byte.flags.s == 1) {
         unsigned16Temp = memRead(++cpu->pc);
         cpu->pc = ((u16)memRead(++cpu->pc) << 8) + unsigned16Temp;
         cpu->pc--;
@@ -1467,7 +1563,8 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       }
       break;
     case 0xF3: // di
-      // disables interrupts -- if they were implemented...
+      cpu->maskableIntEnabled = 0;
+      cpu->currentTstate += 4;
       break;
     case 0xF8: // ret m
       if(cpu->AF.byte.flags.s == 1) {
@@ -1481,15 +1578,20 @@ void executeOpcode(Z80* cpu, u8 opcode) {
         cpu->currentTstate += 5;
       }
       break;
+    case 0xF9: // ld sp, hl
+      cpu->sp = cpu->HL.pair;
+      cpu->currentTstate += 6;
+      break;
     case 0xFB: // ei
-      // turns on interrupts again
+      cpu->maskableIntEnabled = 1;
+      cpu->currentTstate += 4;
       break;
     case 0xFE: // cp n
       signed16Temp = cpu->AF.byte.left - memRead(++cpu->pc);
       signed8Temp = cpu->AF.byte.left - memRead(cpu->pc);
 
       cpu->AF.byte.flags.c = (signed16Temp < 0);
-      cpu->AF.byte.flags.pv = (signed16Temp < 0);
+      cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->AF.byte.left, memRead(cpu->pc), signed16Temp);
       cpu->AF.byte.flags.s = (signed8Temp < 0);
       cpu->AF.byte.flags.z = (signed8Temp == 0);
       // cpu->AF.byte.flags.h = 0; (is set if borrow from bit 4 otherwise reset)

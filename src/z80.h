@@ -44,6 +44,7 @@ struct TAG_Z80 {
   u16 sp, pc;
   u8 I, R;
   int currentTstate;
+  int maskableIntEnabled;
 } __attribute__((packed));
 
 typedef struct TAG_Z80 Z80;

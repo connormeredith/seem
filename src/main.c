@@ -33,17 +33,22 @@ int main(int argc, char **argv) {
 
     executeOpcode(&CPU, memRead(CPU.pc));
     for(;;) {
-      u8 opcode;
+      u8 opcode = 0;
+
       if(CPU.currentTstate >= 69888) {
         CPU.currentTstate %= 69888;
-        opcode = 0xFF;
+        if(CPU.maskableIntEnabled == 1) {
+          CPU.currentTstate += 13;
+          memWrite(--CPU.sp, (++CPU.pc >> 8));
+          memWrite(--CPU.sp, CPU.pc);
+          CPU.pc = 0x37;
+        }
         #ifndef arduino
           render();
         #endif
-      } else {
-        opcode = fetchOpcode(&CPU);
       }
-      CPU.currentTstate %= 69888;
+
+      opcode = fetchOpcode(&CPU);
       executeOpcode(&CPU, opcode);
     }
     return 0;
