@@ -13,16 +13,18 @@ const int HEIGHT = 192;
 
 // Screen vars.
 SDL_Window* window;
+SDL_Event event;
 
 /**
  * Initialises the display window.
  * @param memory The ZX Spectrum's memory array.
  */
-void initDisplay() {
+SDL_Event initDisplay() {
   SDL_Init(SDL_INIT_VIDEO);
   window = SDL_CreateWindow("SEEM", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
 
   render();
+  return event;
 }
 
 /**

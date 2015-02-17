@@ -1,4 +1,4 @@
 #include "SDL2/SDL.h"
 
-void initDisplay();
+SDL_Event initDisplay();
 void render();

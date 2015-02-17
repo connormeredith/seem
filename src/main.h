@@ -1,2 +1,2 @@
-void initDisplay();
+
 void printRAM();

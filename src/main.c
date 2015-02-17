@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include "SDL2/SDL.h"
 
 #ifndef arduino
   #include "lib/display.h"
@@ -26,16 +27,27 @@ int main(int argc, char **argv) {
     init(&CPU);
 
     #ifndef arduino
-      initDisplay();
+    SDL_Event event = initDisplay();
       load48KRom();
-      loadSnapshot(argv[1], &CPU);
+      // loadSnapshot(argv[1], &CPU);
     #endif
+
 
     executeOpcode(&CPU, memRead(CPU.pc));
     for(;;) {
       u8 opcode = 0;
 
       if(CPU.currentTstate >= 69888) {
+
+        while(SDL_PollEvent(&event)) {
+          switch(event.type) {
+            case SDL_QUIT:
+              exit(1);
+            default:
+              break;
+          }
+        }
+        SDL_Delay(20);
         CPU.currentTstate %= 69888;
         if(CPU.maskableIntEnabled == 1) {
           CPU.currentTstate += 13;

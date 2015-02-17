@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "lib/memory.h"
+#include "lib/keyboard.h"
 #include "z80.h"
 #include "main.h"
 
@@ -132,6 +133,10 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       *registerPairHexLookupSeparate[((opcode & 0x30) >> 4)][1] = memRead(++cpu->pc);
       cpu->currentTstate += 10;
       break;
+    case 0x02: // ld (bc), a
+      memWrite(cpu->BC.pair, cpu->AF.byte.left);
+      cpu->currentTstate += 7;
+      break;
     case 0x03: // inc bc
     case 0x13: // inc de
     case 0x23: // inc hl
@@ -205,6 +210,10 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       cpu->AF.byte.flags.c = (temp > 65535);
       cpu->AF.byte.flags.n = 0;
       cpu->currentTstate += 11;
+      break;
+    case 0x0A: // ld a, (bc)
+      cpu->AF.byte.left = memRead(cpu->BC.pair);
+      cpu->currentTstate += 7;
       break;
     case 0x0B: // dec bc
     case 0x1B: // dec de
@@ -1094,6 +1103,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0xDB: // in a, (*)
       cpu->AF.byte.left = 0xBF;
       // need to implement properly.
+      cpu->pc++;
       cpu->currentTstate += 11;
       break;
     case 0xDD: // IX instruction set
@@ -1163,6 +1173,19 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           // cpu->AF.flags.pv = (is set if overflow)
           cpu->AF.byte.flags.n = 1;
           cpu->currentTstate += 19;
+          break;
+        case 0xBE: // cp (IX+*)
+          signed16Temp = (cpu->AF.byte.left - memRead(cpu->IX.pair + memRead(++cpu->pc)));
+          cpu->AF.byte.flags.c = (signed16Temp < 0);
+          cpu->AF.byte.flags.pv = checkSubtractOverflow(cpu->AF.byte.left, memRead(cpu->IX.pair + memRead(cpu->pc)), signed16Temp);
+          signed8Temp = (cpu->AF.byte.left - memRead(cpu->IX.pair + memRead(cpu->pc)));
+
+          cpu->AF.byte.flags.s = (signed8Temp < 0);
+          cpu->AF.byte.flags.z = (signed8Temp == 0);
+          // cpu->AF.byte.flags.h = 0; (is set if borrow from bit 4 otherwise reset)
+          // cpu->AF.flags.pv = (is set if overflow)
+          cpu->AF.byte.flags.n = 1;
+          cpu->currentTstate += 4;
           break;
         case 0xE1: // pop IX
           cpu->IX.byte[0] = memRead(cpu->sp);
@@ -1290,9 +1313,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
           cpu->currentTstate += 20;
           break;
         case 0x78: // in A, (c)
-          // implement later
-          // cpu->AF.byte.left = memory[cpu->BC.pair];
-          cpu->AF.byte.left = 0xBF;
+          cpu->AF.byte.left = getKeyPress(cpu->BC.byte[1]);
           cpu->currentTstate += 11;
           break;
         case 0xB0: // ldir
@@ -1525,6 +1546,21 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       cpu->pc++;
       cpu->currentTstate += 11;
       break;
+    case 0xD4: // call nc, **
+      if(!cpu->AF.byte.flags.c) {
+        cpu->pc += 0x3;
+        memWrite(--cpu->sp, (cpu->pc >> 8));
+        memWrite(--cpu->sp, cpu->pc);
+        cpu->pc -= 0x2;
+        unsigned16Temp = memRead(cpu->pc);
+        cpu->pc = (memRead(++cpu->pc) << 8) + unsigned16Temp;
+        --cpu->pc;
+        cpu->currentTstate += 17;
+      } else {
+        cpu->pc += 0x2;
+        cpu->currentTstate += 10;
+      }
+      break;
     case 0xD8: // ret c
       if(cpu->AF.byte.flags.c == 1) {
         cpu->pc = memRead(cpu->sp);
@@ -1552,7 +1588,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
       cpu->currentTstate += 7;
       break;
     case 0xF2: // jp p, **
-      if(cpu->AF.byte.flags.s == 1) {
+      if(cpu->AF.byte.flags.s != 1) {
         unsigned16Temp = memRead(++cpu->pc);
         cpu->pc = ((u16)memRead(++cpu->pc) << 8) + unsigned16Temp;
         cpu->pc--;
@@ -1581,6 +1617,17 @@ void executeOpcode(Z80* cpu, u8 opcode) {
     case 0xF9: // ld sp, hl
       cpu->sp = cpu->HL.pair;
       cpu->currentTstate += 6;
+      break;
+    case 0xFA: // jp m, **
+      if(cpu->AF.byte.flags.s == 1) {
+        unsigned16Temp = memRead(++cpu->pc);
+        cpu->pc = ((u16)memRead(++cpu->pc) << 8) + unsigned16Temp;
+        cpu->pc--;
+        cpu->currentTstate += 12;
+      } else {
+        cpu->pc += 2;
+        cpu->currentTstate += 7;
+      }
       break;
     case 0xFB: // ei
       cpu->maskableIntEnabled = 1;

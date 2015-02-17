@@ -6,7 +6,7 @@ ARDUINO_LIB_OBJECTS = memory.o
 
 # x86 vars:
 X86_OBJECTS = main.o snapshot.o z80.o
-X86_LIB_OBJECTS = memory.o display.o rom.o
+X86_LIB_OBJECTS = memory.o display.o rom.o keyboard.o
 
 
 # General vars:
