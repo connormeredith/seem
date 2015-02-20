@@ -1,8 +1,6 @@
 #include "../keyboard.h"
 #include "SDL2/SDL.h"
 
-// unsigned char * keys = SDL_GetKeyState(NULL);
-
 uint_least8_t getKeyPress(uint_least8_t row) {
 	SDL_PumpEvents();
 	const uint_least8_t *keys = SDL_GetKeyboardState(NULL);
@@ -50,7 +48,7 @@ uint_least8_t getKeyPress(uint_least8_t row) {
 			if(keys[SDL_SCANCODE_Y]) return 0xEF;
 			return 0xBF;
 		case 0xBF: // H - ENTER
-			if(keys[SDL_SCANCODE_1]) return 0xFE;
+			if(keys[SDL_SCANCODE_RETURN]) return 0xFE;
 			if(keys[SDL_SCANCODE_L]) return 0xFD;
 			if(keys[SDL_SCANCODE_K]) return 0xFB;
 			if(keys[SDL_SCANCODE_J]) return 0xF7;

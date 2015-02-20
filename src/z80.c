@@ -116,7 +116,7 @@ void executeOpcode(Z80* cpu, u8 opcode) {
   u8 oneBits;
   s8 bits;
 
-  printf("---- PC::%x - OP::%x - tstate::%i\n", cpu->pc, opcode, cpu->currentTstate);
+  // printf("---- PC::%x - OP::%x - tstate::%i\n", cpu->pc, opcode, cpu->currentTstate);
 
   // debug(cpu, 0);
 

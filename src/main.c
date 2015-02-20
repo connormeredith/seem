@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     #ifndef arduino
     SDL_Event event = initDisplay();
       load48KRom();
-      // loadSnapshot(argv[1], &CPU);
+      loadSnapshot(argv[1], &CPU);
     #endif
 
 
